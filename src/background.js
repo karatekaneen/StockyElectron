@@ -1,8 +1,8 @@
 'use strict'
 
-import { app, protocol, BrowserWindow } from 'electron'
+import { app, protocol, BrowserWindow, ipcMain } from 'electron'
 import { createProtocol, installVueDevtools } from 'vue-cli-plugin-electron-builder/lib'
-import { initApp } from './backendModules/init'
+import { createInitApp } from './backendModules/init'
 const isDevelopment = process.env.NODE_ENV !== 'production'
 
 // Keep a global reference of the window object, if you don't, the window will
@@ -74,6 +74,9 @@ app.on('ready', async () => {
 		// }
 	}
 	createWindow()
+
+	// Set up all the event listeners from the frontend
+	const initApp = createInitApp()
 	initApp()
 })
 

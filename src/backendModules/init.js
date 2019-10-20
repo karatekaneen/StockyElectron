@@ -1,11 +1,13 @@
-import { ipcMain } from 'electron'
+import { ipcMain as _ipcMain } from 'electron'
+import _axios from 'axios'
 
-export const initApp = () => {
-	ipcMain.on('asynchronous-message', (event, arg) => {
-		console.log(arg) // prints "ping"
-		event.reply('asynchronous-reply', {
-			title: 'sttelkdas',
-			price: [1, 2, 34, 5, 6, 34, 2, 32, 2, 13, 21, 3]
+export const createInitApp = (ipcMain = _ipcMain, axios = _axios) => {
+	const initApp = () => {
+		ipcMain.on('asynchronous-message', async (event, { id }) => {
+			const query = `{stock( id: ${id}) {id, name, list, priceData{open, high, low, close, date}}}`
+			const { data } = await axios.post('http://localhost:4000/graphql?', { query })
+			event.reply('asynchronous-reply', data.data.stock)
 		})
-	})
+	}
+	return initApp
 }
