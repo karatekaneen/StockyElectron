@@ -2,6 +2,7 @@
 	<v-container>
 		<v-card>
 			<v-btn @click="testmetod">skf</v-btn>
+			<v-btn @click="rem">test</v-btn>
 			<div>{{response.name}}</div>
 			<div>{{response.list}}</div>
 			<div>{{response.lastPricePoint}}</div>
@@ -27,38 +28,41 @@ export default {
 	methods: {
 		testmetod() {
 			ipcRenderer.on('asynchronous-reply', (event, arg) => {
-				if (arg.id === 5258) {
-					this.response = arg
-					this.candles = this.chart.addCandlestickSeries()
-					this.lines = this.chart.addLineSeries()
-					this.backtestLine = this.chart.addLineSeries()
+				this.response = arg
+				this.candles = this.chart.addCandlestickSeries()
+				this.lines = this.chart.addLineSeries()
+				this.backtestLine = this.chart.addLineSeries()
 
-					this.response.priceData = this.response.priceData.map(pricePoint => {
-						const d = new Date(pricePoint.date)
-						pricePoint.time = `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`
-						return pricePoint
-					})
+				this.response.priceData = this.response.priceData.map(pricePoint => {
+					const d = new Date(pricePoint.date)
+					pricePoint.time = `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`
+					return pricePoint
+				})
 
-					this.ma = this.response.priceData.map(({ time, close }, index) => {
-						if (index < 199) {
-							return { time, value: null }
-						} else {
-							return {
-								time,
-								value: this.getAverage(
-									this.response.priceData.slice(index - 199, index).map(p => p.close)
-								)
-							}
+				this.ma = this.response.priceData.map(({ time, close }, index) => {
+					if (index < 199) {
+						return { time, value: null }
+					} else {
+						return {
+							time,
+							value: this.getAverage(
+								this.response.priceData.slice(index - 199, index).map(p => p.close)
+							)
 						}
-					})
-					this.backtest = this.getBacktest(this.response.priceData, this.ma)
+					}
+				})
+				this.backtest = this.getBacktest(this.response.priceData, this.ma)
 
-					this.candles.setData(this.response.priceData)
-					this.lines.setData(this.ma)
-					this.backtestLine.setData(this.backtest)
-				}
+				this.candles.setData(this.response.priceData)
+				this.lines.setData(this.ma)
+				this.backtestLine.setData(this.backtest)
+				console.log(JSON.stringify(this.chart, null, 3))
 			})
 			ipcRenderer.send('asynchronous-message', { id: 5234 })
+		},
+
+		rem() {
+			this.chart.removeSeries(this.backtestLine)
 		},
 
 		getBacktest(candles, ma) {
