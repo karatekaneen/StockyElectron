@@ -6,7 +6,6 @@
 			<div>{{response.name}}</div>
 			<div>{{response.list}}</div>
 			<div>{{response.lastPricePoint}}</div>
-			<div id="chartdiv"></div>
 		</v-card>
 	</v-container>
 </template>
