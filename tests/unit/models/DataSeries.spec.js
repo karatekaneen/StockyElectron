@@ -99,7 +99,6 @@ describe('DataSeries', () => {
 
 		it('expects candlestick all pricepoints to be either null or numbers', () => {
 			expect.assertions(2)
-			console.log(typeof NaN)
 			try {
 				const dataSeries = new DataSeries({
 					id: 123,
@@ -143,4 +142,6 @@ describe('DataSeries', () => {
 			])
 		})
 	})
+
+	it.todo('should have histograms?')
 })
