@@ -54,18 +54,4 @@ export class DataSeries {
 				time && ((typeof value === 'number' && !isNaN(value)) || value === null)
 		)
 	}
-
-	/**
-	 *  Save the date under the prop `time` with the format yyyy-mm-dd to be able to pass it directly to chart
-	 * @todo Den här ska in i en `stock`-class istället.
-	 * @param {Array<Object>} priceData The OHLCV+ date data from the API
-	 * @returns {Array<Object>} the original array with the `time` property added with date in `YYYY-MM-DD`
-	 */
-	// dateToTime(priceData) {
-	// 	return priceData.map(pricePoint => {
-	// 		const d = new Date(pricePoint.date)
-	// 		pricePoint.time = `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`
-	// 		return pricePoint
-	// 	})
-	// }
 }
