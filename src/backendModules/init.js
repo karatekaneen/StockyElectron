@@ -1,12 +1,13 @@
 import { ipcMain as _ipcMain } from 'electron'
-import _axios from 'axios'
+import { DataFetcher as _DataFetcher } from './DataFetcher'
 
-export const createInitApp = (ipcMain = _ipcMain, axios = _axios) => {
+export const createInitApp = (ipcMain = _ipcMain, DataFetcher = _DataFetcher) => {
 	const initApp = () => {
+		const dataFetcher = new DataFetcher({ API_URL: 'http://localhost:4000/graphql?' })
+
 		ipcMain.on('asynchronous-message', async (event, { id }) => {
-			const query = `{stock( id: ${id}) {id, name, list, priceData{open, high, low, close, date}}}`
-			const { data } = await axios.post('http://localhost:4000/graphql?', { query })
-			event.reply('asynchronous-reply', data.data.stock)
+			const resp = await dataFetcher.fetchStock({ id })
+			event.reply('asynchronous-reply', resp)
 		})
 	}
 	return initApp
