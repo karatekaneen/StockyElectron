@@ -1,13 +1,38 @@
-export class Stock {
-	constructor({ id, name, list, priceData, lastPricePoint, linkName }) {
-		if (id) this.id = id
-		if (name) this.name = name
-		if (list) this.list = list
-		if (lastPricePoint) this.lastPricePoint = lastPricePoint
-		if (linkName) this.linkName = linkName
+import _DataSeries from './DataSeries'
+
+export default class Stock {
+	constructor({ DataSeries = _DataSeries, data = {} }) {
+		// Add deps:
+		this.DataSeries = _DataSeries
+
+		// Assign data:
+		const { id, name, list, priceData, lastPricePoint, linkName } = data
+		this.id = id || null
+		this.name = name || null
+		this.list = list || null
+		this.lastPricePoint = lastPricePoint || null
+		this.linkName = linkName || null
+
 		if (priceData) {
 			this.priceData = this.dateToTime(priceData)
+		} else {
+			this.priceData = null
 		}
+
+		this.dataSeries = []
+	}
+
+	createCandleStickSeries() {
+		const data = this.priceData.map(p => ({
+			time: p.time,
+			open: p.open,
+			high: p.high,
+			low: p.low,
+			close: p.close
+		}))
+
+		const d = new this.DataSeries({ name: `${this.name} Price`, type: 'candlestick', data })
+		this.dataSeries.push(d)
 	}
 
 	/**
@@ -17,9 +42,12 @@ export class Stock {
 	 */
 	dateToTime(priceData) {
 		return priceData.map(pricePoint => {
-			const d = new Date(pricePoint.date)
-			pricePoint.time = `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`
-			return pricePoint
+			if (!pricePoint.date) throw new Error('Date is required')
+			else {
+				const d = new Date(pricePoint.date)
+				pricePoint.time = `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`
+				return pricePoint
+			}
 		})
 	}
 }

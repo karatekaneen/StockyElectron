@@ -1,4 +1,4 @@
-import { DataSeries } from '../../../src/models/DataSeries'
+import DataSeries from '../../../src/models/DataSeries'
 
 describe('DataSeries', () => {
 	describe('validateData', () => {
@@ -144,4 +144,6 @@ describe('DataSeries', () => {
 	})
 
 	it.todo('should have histograms?')
+	it.todo('high must be the highest value')
+	it.todo('low mustbe the lowest value')
 })

@@ -1,5 +1,5 @@
 import _axios from 'axios'
-import { Stock } from '../models/Stock'
+import Stock from '../models/Stock'
 
 export class DataFetcher {
 	constructor({ axios = _axios, API_URL }) {

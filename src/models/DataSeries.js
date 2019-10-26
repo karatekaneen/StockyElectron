@@ -1,4 +1,4 @@
-export class DataSeries {
+export default class DataSeries {
 	constructor({ id, name, type, data }) {
 		if (!name || !type || !data) throw new Error('Name, type and data is required')
 		else {
