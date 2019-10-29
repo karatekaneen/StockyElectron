@@ -33,6 +33,7 @@ export default class Stock {
 
 		const d = new this.DataSeries({ name: `${this.name} Price`, type: 'candlestick', data })
 		this.dataSeries.push(d)
+		return d
 	}
 
 	createLineSeries(field = 'close') {
@@ -53,9 +54,11 @@ export default class Stock {
 				})
 
 				this.dataSeries.push(d)
+				return d
 			}
 		} else {
 			console.warn('Creating line series requires priceData')
+			return null
 		}
 	}
 
