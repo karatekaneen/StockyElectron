@@ -22,7 +22,7 @@ export default class Stock {
 		this.dataSeries = []
 	}
 
-	createCandleStickSeries() {
+	createCandlestickSeries() {
 		const data = this.priceData.map(p => ({
 			time: p.time,
 			open: p.open,
@@ -33,6 +33,30 @@ export default class Stock {
 
 		const d = new this.DataSeries({ name: `${this.name} Price`, type: 'candlestick', data })
 		this.dataSeries.push(d)
+	}
+
+	createLineSeries(field = 'close') {
+		if (this.priceData) {
+			const okFields = ['open', 'close', 'high', 'low', 'volume', 'owners']
+			if (!okFields.includes(field)) {
+				throw new Error('field has to be "open", "close", "high", "low", "volume" or "owners"')
+			} else {
+				const data = this.priceData.map(p => ({
+					time: p.time,
+					value: p[field]
+				}))
+
+				const d = new this.DataSeries({
+					name: `${this.name} ${field}`,
+					type: 'line',
+					data
+				})
+
+				this.dataSeries.push(d)
+			}
+		} else {
+			console.warn('Creating line series requires priceData')
+		}
 	}
 
 	/**

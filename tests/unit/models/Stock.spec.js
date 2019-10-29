@@ -3,6 +3,10 @@ import DataSeries from '../../../src/models/DataSeries'
 jest.mock('../../../src/models/DataSeries')
 
 describe('Stock', () => {
+	beforeEach(() => {
+		jest.clearAllMocks()
+	})
+
 	it('Assigns null if no value is passed', () => {
 		const stock = new Stock({ data: { name: 'SKF AB', id: 1234 } })
 		expect(stock.list).toBe(null)
@@ -42,7 +46,7 @@ describe('Stock', () => {
 				DataSeries,
 				data: testData
 			})
-			stock.createCandleStickSeries()
+			stock.createCandlestickSeries()
 
 			expect(stock.dataSeries.length).toBe(1)
 			const mock = DataSeries.mock.instances[0]
@@ -55,8 +59,103 @@ describe('Stock', () => {
 			expect(name).toBe('SKF Price')
 			expect(type).toBe('candlestick')
 		})
+
+		it.todo('should check that there is pricedata')
 	})
 
-	it.todo('should be able to make line chart')
+	describe('createLineSeries', () => {
+		it('can make line chart', () => {
+			const testData = {
+				name: 'SKF',
+				list: 'Large Cap Stockholm',
+				priceData: [
+					{ date: '2019-10-26T14:50:10.462Z', open: 12, high: 14, low: 12, close: 13 },
+					{ date: '2019-10-27T14:50:10.462Z', open: 13, high: 14, low: 12, close: 14 }
+				]
+			}
+			const stock = new Stock({
+				DataSeries,
+				data: testData
+			})
+			stock.createLineSeries()
+
+			expect(stock.dataSeries.length).toBe(1)
+			const mock = DataSeries.mock.instances[0]
+			const { data, name, type } = mock.constructor.mock.calls[0][0]
+			expect(data).toEqual([
+				{ time: '2019-10-26', value: 13 },
+				{ time: '2019-10-27', value: 14 }
+			])
+
+			expect(name).toBe('SKF close')
+			expect(type).toBe('line')
+		})
+
+		it('requires field to be one of the pre-specified', () => {
+			expect.assertions(2)
+			const testData = {
+				name: 'SKF',
+				list: 'Large Cap Stockholm',
+				priceData: [
+					{ date: '2019-10-26T14:50:10.462Z', open: 12, high: 14, low: 12, close: 13 },
+					{ date: '2019-10-27T14:50:10.462Z', open: 13, high: 14, low: 12, close: 14 }
+				]
+			}
+			const stock = new Stock({
+				DataSeries,
+				data: testData
+			})
+
+			try {
+				stock.createLineSeries('unicorn')
+			} catch (err) {
+				expect(err.message).toBe(
+					'field has to be "open", "close", "high", "low", "volume" or "owners"'
+				)
+				expect(stock.dataSeries.length).toBe(0)
+			}
+		})
+
+		it('Making of line chart requires priceData', () => {
+			const testData = {
+				name: 'SKF',
+				list: 'Large Cap Stockholm'
+			}
+			const stock = new Stock({
+				DataSeries,
+				data: testData
+			})
+			stock.createLineSeries()
+
+			expect(stock.dataSeries.length).toBe(0)
+		})
+
+		it('can select what field to use in line chart', () => {
+			const testData = {
+				name: 'SKF',
+				list: 'Large Cap Stockholm',
+				priceData: [
+					{ date: '2019-10-26T14:50:10.462Z', open: 12, high: 14, low: 12, close: 13 },
+					{ date: '2019-10-27T14:50:10.462Z', open: 13, high: 14, low: 12, close: 14 }
+				]
+			}
+			const stock = new Stock({
+				DataSeries,
+				data: testData
+			})
+			stock.createLineSeries('open')
+
+			expect(stock.dataSeries.length).toBe(1)
+			const mock = DataSeries.mock.instances[0]
+			const { data, name, type } = mock.constructor.mock.calls[0][0]
+			expect(data).toEqual([
+				{ time: '2019-10-26', value: 12 },
+				{ time: '2019-10-27', value: 13 }
+			])
+
+			expect(name).toBe('SKF open')
+			expect(type).toBe('line')
+		})
+	})
 	it.todo('should be able to make area chart')
 })
