@@ -5,6 +5,8 @@
 </template>
 
 <script>
+import { createChart } from 'lightweight-charts'
+
 export default {
 	props: ['chartData'],
 	watch: {
@@ -16,11 +18,18 @@ export default {
 			chartSeries: []
 		}
 	},
+
+	methods: {
+		createChartInstance() {
+			this.chart = createChart('chartdiv', { width: 800, height: 600 })
+		}
+	},
+
 	mounted() {
-		this.chart = createChart('chartdiv', { width: 800, height: 600 })
+		this.createChartInstance()
 	}
 }
 </script>
 
-<style lang="scss" scoped>
+<style scoped>
 </style>
