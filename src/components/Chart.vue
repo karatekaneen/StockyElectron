@@ -5,23 +5,36 @@
 </template>
 
 <script>
-import { createChart } from 'lightweight-charts'
-
 export default {
 	props: ['chartData'],
+
 	watch: {
-		chartData(newChart, oldChart) {}
+		chartData: {
+			immediate: true,
+			deep: true,
+			handler(newValue, oldValue) {
+				// RemoveCharts(newValue, oldValue)
+				this.seriesToDisplay = newValue
+				this.createChartSeries(this.seriesToDisplay)
+			}
+		}
 	},
 	data() {
 		return {
 			chart: null,
-			chartSeries: []
+			chartSeries: [],
+			seriesToDisplay: []
 		}
 	},
 
 	methods: {
-		createChartInstance() {
+		async createChartInstance() {
+			const { createChart } = await import('lightweight-charts')
 			this.chart = createChart('chartdiv', { width: 800, height: 600 })
+		},
+
+		createChartSeries(series) {
+			console.log(series)
 		}
 	},
 

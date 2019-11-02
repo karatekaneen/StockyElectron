@@ -11,7 +11,7 @@
 		"postinstall": "electron-builder install-app-deps",
 		"postuninstall": "electron-builder install-app-deps",
 		"test:unit": "vue-cli-service test:unit --verbose --silent",
-		"testwatch": "vue-cli-service test:unit --watchAll --silent"
+		"testwatch": "vue-cli-service test:unit --watchAll"
 	},
 	"dependencies": {
 		"axios": "^0.19.0",
