@@ -14,7 +14,11 @@ export default class Stock {
 		this.linkName = linkName || null
 
 		if (priceData) {
-			this.priceData = this.dateToTime(priceData)
+			if (priceData[0].hasOwnProperty('time')) {
+				this.priceData = priceData
+			} else {
+				this.priceData = this.dateToTime(priceData)
+			}
 		} else {
 			this.priceData = null
 		}
