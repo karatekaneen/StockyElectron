@@ -13,7 +13,8 @@ export class DataFetcher {
 	}) {
 		const query = `{stock( id: ${id}) {${fieldString}}}}`
 		const { data } = await this.axios.post(this.API_URL, { query })
-		const stock = new Stock(data.data.stock)
+		console.log(data)
+		const stock = new Stock({ data: data.data.stock })
 		return stock
 	}
 }
