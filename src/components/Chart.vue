@@ -21,11 +21,9 @@ export default {
 				const chartsToRemove = this.seriesToDisplay.filter(series =>
 					Boolean(!newValue.map(x => x.name).includes(series.name))
 				)
-				console.log('newval', newValue.map(x => x.name))
-				console.log('toAdd', chartsToAdd.map(x => x.name))
-				console.log('existing', this.seriesToDisplay.map(x => x.name))
-				this.createChartSeries(chartsToAdd)
-				this.removeSeries(chartsToRemove)
+
+				if (chartsToAdd.length > 0) this.createChartSeries(chartsToAdd)
+				if (chartsToRemove.length > 0) this.removeSeries(chartsToRemove)
 			}
 		}
 	},
@@ -69,12 +67,22 @@ export default {
 				})
 			}
 		},
+
 		removeSeries(unwantedSeries) {
-			unwantedSeries.forEach(s => {
-				this.chart.removeSeries(s.chartDataSeries)
-				delete s.chartDataSeries
-				this.seriesToDisplay = this.seriesToDisplay.filter(existing => existing.name !== s.name)
-			})
+			if (unwantedSeries.length < 1) throw new Error('unwantedSeries can not be empty')
+			else if (this.seriesToDisplay.length < 1)
+				throw new Error(
+					'seriesToDisplay can not be empty before removal - There is a bug somewhere'
+				)
+			else {
+				unwantedSeries.forEach(s => {
+					this.chart.removeSeries(s.chartDataSeries)
+					delete s.chartDataSeries
+					this.seriesToDisplay = this.seriesToDisplay.filter(
+						existing => existing.name !== s.name
+					)
+				})
+			}
 		}
 	},
 
