@@ -136,6 +136,82 @@ describe('Chart', () => {
 			}
 		})
 	})
-	it.todo('should test createChartSeries')
+
+	describe('createChartSeries', () => {
+		it('loops over each series and adds them by type', () => {
+			expect.assertions(6)
+
+			const setData = jest.fn()
+			const addLineSeries = jest.fn(() => ({ setData }))
+			const addCandlestickSeries = jest.fn(() => ({ setData }))
+			const createChartInstance = jest.fn(() => ({ chart: 'data' }))
+			const wrapper = shallowMount(Chart, {
+				methods: {
+					createChartInstance
+				},
+				propsData: {
+					chartData: [{ chart: 'test' }, { data: 42 }]
+				}
+			})
+
+			wrapper.vm.chart = { addCandlestickSeries, addLineSeries }
+
+			wrapper.vm.createChartSeries([
+				{
+					name: 'candlesToAdd',
+					type: 'candlestick',
+					data: [{ time: 2, open: 42, high: 60, low: 39, close: 52 }]
+				},
+				{ name: 'lineToAdd', type: 'line', data: [{ time: 2, value: 42 }] }
+			])
+
+			expect(wrapper.vm.seriesToDisplay.length).toBe(2)
+			expect(addCandlestickSeries).toHaveBeenCalledTimes(1)
+			expect(addLineSeries).toHaveBeenCalledTimes(1)
+			expect(setData).toHaveBeenCalledTimes(2)
+			expect(setData.mock.calls[0][0]).toEqual([
+				{ close: 52, high: 60, low: 39, open: 42, time: 2 }
+			])
+			expect(setData.mock.calls[1][0]).toEqual([{ time: 2, value: 42 }])
+		})
+
+		it('throws when encountering unknown chart type', () => {
+			expect.assertions(5)
+
+			const setData = jest.fn()
+			const addLineSeries = jest.fn(() => ({ setData }))
+			const addCandlestickSeries = jest.fn(() => ({ setData }))
+			const createChartInstance = jest.fn(() => ({ chart: 'data' }))
+			const wrapper = shallowMount(Chart, {
+				methods: {
+					createChartInstance
+				},
+				propsData: {
+					chartData: [{ chart: 'test' }, { data: 42 }]
+				}
+			})
+
+			wrapper.vm.chart = { addCandlestickSeries, addLineSeries }
+
+			try {
+				wrapper.vm.createChartSeries([
+					{
+						name: 'shouldFail',
+						type: 'unicorn',
+						data: [{ time: 2, open: 42, high: 60, low: 39, close: 52 }]
+					}
+				])
+			} catch (err) {
+				expect(wrapper.vm.seriesToDisplay.length).toBe(0)
+				expect(addCandlestickSeries).toHaveBeenCalledTimes(0)
+				expect(addLineSeries).toHaveBeenCalledTimes(0)
+				expect(setData).toHaveBeenCalledTimes(0)
+				expect(err.message).toBe('Unknown chart type: unicorn')
+			}
+		})
+
+		it.todo('should handle area charts')
+		it.todo('should handle histogram charts')
+	})
 	it.todo('should have options')
 })

@@ -1,6 +1,5 @@
 <template>
 	<v-card>
-		<v-btn @click="logit">test</v-btn>
 		<div id="chartdiv"></div>
 	</v-card>
 </template>
@@ -36,18 +35,6 @@ export default {
 	},
 
 	methods: {
-		logit() {
-			const keys = Object.keys(this.seriesToDisplay[0])
-			const clone = {}
-			keys.forEach(key => {
-				if (key !== 'chartDataSeries') {
-					clone[key] = this.seriesToDisplay[0][key]
-				}
-			})
-			delete clone.chartDataSeries
-
-			console.log(JSON.stringify(clone, null, 3))
-		},
 		async createChartInstance() {
 			const { createChart } = await import('lightweight-charts')
 			this.chart = createChart('chartdiv', { width: 800, height: 600 })
@@ -61,7 +48,10 @@ export default {
 						s.chartDataSeries = this.chart.addCandlestickSeries()
 					} else if (s.type === 'line') {
 						s.chartDataSeries = this.chart.addLineSeries()
+					} else {
+						throw new Error(`Unknown chart type: ${s.type}`)
 					}
+
 					s.chartDataSeries.setData(s.data)
 					this.seriesToDisplay.push(s)
 				})
