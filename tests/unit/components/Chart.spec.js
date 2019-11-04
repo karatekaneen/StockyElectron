@@ -214,4 +214,5 @@ describe('Chart', () => {
 		it.todo('should handle histogram charts')
 	})
 	it.todo('should have options')
+	it.todo('should have legend)')
 })
