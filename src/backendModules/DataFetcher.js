@@ -17,4 +17,17 @@ export class DataFetcher {
 		const stock = new Stock({ data: data.data.stock })
 		return stock
 	}
+
+	async fetchSummary({ fieldString = 'id, name, list' }) {
+		// TODO Should use summary doc instead of all the single stock docs
+		const query = `
+		{
+			stocks{
+				${fieldString}
+			}
+		}`
+		const { data } = await this.axios.post(this.API_URL, { query })
+		console.log(data)
+		return data.data.stocks
+	}
 }

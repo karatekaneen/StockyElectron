@@ -8,6 +8,7 @@
 			<v-btn @click="d = [d[0]]">remove 0</v-btn>
 			<v-btn @click="d = [d[1]]">remove 1</v-btn>
 			<Chart v-if="response" :chartData="d" />
+			<StockList />
 		</v-card>
 	</v-container>
 </template>
@@ -16,9 +17,11 @@
 import Chart from './Chart'
 import { ipcRenderer } from 'electron'
 import Stock from '../models/Stock'
+import StockList from './StockList'
 export default {
 	components: {
-		Chart
+		Chart,
+		StockList
 	},
 	data: () => ({
 		response: null,

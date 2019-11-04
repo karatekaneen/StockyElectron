@@ -9,6 +9,11 @@ export const createInitApp = (ipcMain = _ipcMain, DataFetcher = _DataFetcher) =>
 			const resp = await dataFetcher.fetchStock({ id })
 			event.reply('single-stock-response', resp)
 		})
+
+		ipcMain.on('all-stocks-summary', async (event, arg) => {
+			const resp = await dataFetcher.fetchSummary({})
+			event.reply('all-stocks-summary-response', resp)
+		})
 	}
 	return initApp
 }
