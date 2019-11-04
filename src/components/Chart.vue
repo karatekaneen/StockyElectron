@@ -59,12 +59,13 @@ export default {
 		},
 
 		removeSeries(unwantedSeries) {
-			if (unwantedSeries.length < 1) throw new Error('unwantedSeries can not be empty')
-			else if (this.seriesToDisplay.length < 1)
+			if (unwantedSeries.length < 1) {
+				throw new Error('unwantedSeries can not be empty')
+			} else if (this.seriesToDisplay.length < 1) {
 				throw new Error(
 					'seriesToDisplay can not be empty before removal - There is a bug somewhere'
 				)
-			else {
+			} else {
 				unwantedSeries.forEach(s => {
 					this.chart.removeSeries(s.chartDataSeries)
 					delete s.chartDataSeries
