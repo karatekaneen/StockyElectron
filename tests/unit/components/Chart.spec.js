@@ -1,9 +1,11 @@
-import { shallowMount } from '@vue/test-utils'
+import { shallowMount, createLocalVue } from '@vue/test-utils'
 import Chart from '../../../src/components/Chart'
-import Vue from 'vue'
+// import Vue from 'vue'
 import Vuetify from 'vuetify'
 
-Vue.use(Vuetify)
+const localVue = createLocalVue()
+
+localVue.use(Vuetify)
 document.body.setAttribute('data-app', true)
 
 describe('Chart', () => {
@@ -12,7 +14,8 @@ describe('Chart', () => {
 		const wrapper = shallowMount(Chart, {
 			methods: {
 				createChartInstance: mockCreateChartInstance
-			}
+			},
+			localVue
 		})
 
 		expect(mockCreateChartInstance).toHaveBeenCalledTimes(1)
@@ -30,7 +33,8 @@ describe('Chart', () => {
 			},
 			propsData: {
 				chartData: [{ chart: 'test' }, { data: 42 }]
-			}
+			},
+			localVue
 		})
 
 		// It is bad practice to override props like this but it is the simplest way to test watchers on propsData
@@ -51,6 +55,7 @@ describe('Chart', () => {
 			const createChartInstance = jest.fn(() => ({ chart: 'data' }))
 			const createChartSeries = jest.fn()
 			const wrapper = shallowMount(Chart, {
+				localVue,
 				methods: {
 					createChartInstance,
 					createChartSeries
@@ -86,6 +91,7 @@ describe('Chart', () => {
 			const createChartInstance = jest.fn(() => ({ chart: 'data' }))
 			const createChartSeries = jest.fn()
 			const wrapper = shallowMount(Chart, {
+				localVue,
 				methods: {
 					createChartInstance,
 					createChartSeries
@@ -115,6 +121,7 @@ describe('Chart', () => {
 			const createChartInstance = jest.fn(() => ({ chart: 'data' }))
 			const createChartSeries = jest.fn()
 			const wrapper = shallowMount(Chart, {
+				localVue,
 				methods: {
 					createChartInstance,
 					createChartSeries
@@ -146,6 +153,7 @@ describe('Chart', () => {
 			const addCandlestickSeries = jest.fn(() => ({ setData }))
 			const createChartInstance = jest.fn(() => ({ chart: 'data' }))
 			const wrapper = shallowMount(Chart, {
+				localVue,
 				methods: {
 					createChartInstance
 				},
@@ -183,6 +191,7 @@ describe('Chart', () => {
 			const addCandlestickSeries = jest.fn(() => ({ setData }))
 			const createChartInstance = jest.fn(() => ({ chart: 'data' }))
 			const wrapper = shallowMount(Chart, {
+				localVue,
 				methods: {
 					createChartInstance
 				},
