@@ -1,6 +1,6 @@
 <template>
 	<div>
-		{{isLoadingAllStocks.toString()}}
+		<!-- {{isLoadingAllStocks.toString()}} -->
 		<v-btn @click="loadList">ladda</v-btn>
 		<v-list two-line subheader>
 			<v-subheader inset>Folders</v-subheader>
@@ -40,7 +40,9 @@ export default {
 		},
 		...mapActions(['getAllStocks'])
 	},
-	mounted() {}
+	mounted() {
+		this.loadList()
+	}
 }
 </script>
 

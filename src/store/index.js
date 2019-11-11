@@ -32,6 +32,10 @@ export default new Vuex.Store({
 				ipcRenderer.send('all-stocks-summary')
 				commit('setisLoadingAllStocks', true)
 			}
+		},
+
+		setSelectedStock({ commit }, stockId) {
+			commit('setSelectedStock', stockId)
 		}
 	},
 	modules: {}
