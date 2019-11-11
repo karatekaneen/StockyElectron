@@ -37,12 +37,11 @@ describe('Chart', () => {
 			localVue
 		})
 
-		// It is bad practice to override props like this but it is the simplest way to test watchers on propsData
-		wrapper.vm.chartData = [{ new: 42 }, { candlestick: 24 }]
+		wrapper.setProps({ chartData: [{ new: 42 }, { candlestick: 24 }] })
 		expect(createChartSeries.mock.calls[0][0]).toEqual([{ new: 42 }, { candlestick: 24 }])
 		jest.clearAllMocks()
 
-		wrapper.vm.chartData = [{ newAgain: 54 }, { lineChart: 'wooop' }]
+		wrapper.setProps({ chartData: [{ newAgain: 54 }, { lineChart: 'wooop' }] })
 		expect(createChartSeries.mock.calls[0][0]).toEqual([{ newAgain: 54 }, { lineChart: 'wooop' }])
 		jest.clearAllMocks()
 	})
