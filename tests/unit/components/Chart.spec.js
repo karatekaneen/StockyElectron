@@ -17,7 +17,7 @@ describe('Chart', () => {
 			},
 			localVue
 		})
-
+		// test
 		expect(mockCreateChartInstance).toHaveBeenCalledTimes(1)
 	})
 
