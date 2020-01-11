@@ -1,15 +1,33 @@
 export default class Strategy {
-	constructor({ strategyName = 'flipper', initialContext } = {}) {
+	constructor({ strategyName = 'flipper', initialContext, signalFunction } = {}) {
 		this.context = initialContext
 		this.strategyName = strategyName
+
+		if (signalFunction) {
+			this.getSignal = signalFunction
+		}
 	}
 
-	test({ stock, startDate, endDate = Date.now(), initialContext = this.context } = {}) {
-		const context = JSON.parse(JSON.stringify(initialContext))
+	test({
+		stock,
+		startDate,
+		endDate = new Date().toISOString(),
+		initialContext = this.context
+	} = {}) {
 		const signals = []
+
+		const testData = this.extractData({ priceData: stock.priceData, startDate, endDate })
 
 		console.log('Strategy - Test')
 
-		this.getSignal()
+		// this.getSignal()
+	}
+
+	getSignal() {
+		throw new Error('No signal function has been provided')
+	}
+
+	extractData({ priceData, startDate, endDate }) {
+		return []
 	}
 }
