@@ -8,7 +8,7 @@
 			<v-btn @click="d = [d[0]]">remove 0</v-btn>
 			<v-btn @click="d = [d[1]]">remove 1</v-btn>
 			<Chart v-if="response" :chartData="d" />
-			<StockList />
+			<!-- <StockList /> -->
 		</v-card>
 	</v-container>
 </template>
@@ -17,11 +17,11 @@
 import Chart from './Chart'
 import { ipcRenderer } from 'electron'
 import Stock from '../models/Stock'
-import StockList from './StockList'
+// import StockList from './StockList'
 export default {
 	components: {
-		Chart,
-		StockList
+		Chart
+		// StockList
 	},
 	data: () => ({
 		response: null,
@@ -29,12 +29,10 @@ export default {
 	}),
 	methods: {
 		testmetod() {
-			ipcRenderer.on('single-stock-response', (event, arg) => {
-				const s = new Stock({ data: arg })
-				s.createCandlestickSeries()
-				this.response = s
+			ipcRenderer.on('test-strategy-response', (event, arg) => {
+				console.log('response', arg)
 			})
-			ipcRenderer.send('single-stock', { id: 5234 })
+			ipcRenderer.send('test-strategy', { id: 5234 })
 		}
 	}
 }
