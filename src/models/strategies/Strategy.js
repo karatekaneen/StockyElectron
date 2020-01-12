@@ -14,12 +14,38 @@ export default class Strategy {
 		endDate = new Date().toISOString(),
 		initialContext = this.context
 	} = {}) {
-		const signals = []
-
 		const testData = this.extractData({ priceData: stock.priceData, startDate, endDate })
 
-		console.log('Strategy - Test')
+		// TODO It may be a good idea to refactor to pass all the data and index instead to allow for more complex calculations etc.
+		// ? Maybe the better way is to add ability to override the default test function
+		// Run the test in a reduce:
+		const { signals, contextHistory, context } = testData.reduce(
+			(aggregate, currentBar, index, originalArr) => {
+				if (index > 0) {
+					const { signal, context: newContext } = this.getSignal({
+						signalBar: originalArr[index - 1],
+						currentBar,
+						stock,
+						context: aggregate.context
+					})
 
+					// Update context
+					aggregate.contextHistory.push(newContext)
+					aggregate.context = newContext
+
+					// Add signal to array if there is any
+					if (signal) {
+						aggregate.signals.push(signal)
+					}
+				}
+
+				return aggregate
+			},
+			// Initial values:
+			{ signals: [], context: initialContext, contextHistory: [initialContext] }
+		)
+
+		return { signals, contextHistory, context }
 		// this.getSignal()
 	}
 
