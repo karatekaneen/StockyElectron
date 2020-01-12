@@ -46,7 +46,6 @@ export default class Strategy {
 		)
 
 		return { signals, contextHistory, context }
-		// this.getSignal()
 	}
 
 	getSignal() {
