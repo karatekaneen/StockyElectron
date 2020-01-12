@@ -1,4 +1,28 @@
+import Flipper from '../Flipper'
+
 describe('Flipper Strategy', () => {
+	it('Has a working constructor', () => {
+		const f = new Flipper()
+		expect(f instanceof Flipper).toBe(true)
+	})
+
+	it('Uses default rules if none provided', () => {
+		const f = new Flipper()
+
+		expect(f.rules.entryFactor).toBe(1.2)
+		expect(f.rules.entryInBearishRegime).toBe(false)
+	})
+
+	it('Can override single rule in constructor', () => {
+		const f = new Flipper({ rules: { entryFactor: 1 } })
+
+		expect(f.rules.entryFactor).toBe(1)
+		expect(f.rules.entryInBearishRegime).toBe(false)
+	})
+
+	it.todo('Uses default context if none is provided')
+	it.todo('Can overwrite single context property in constructor')
+
 	describe('Context', () => {
 		it.todo('Moves down lowest price on new low if bearish bias')
 		it.todo('Moves up highest price on new high if bullish bias')
