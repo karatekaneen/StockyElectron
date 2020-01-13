@@ -1,6 +1,13 @@
 import Strategy from './Strategy'
 
-export default class Flipper extends Strategy {
+/**
+ * "20% Flipper" by Nick Radge.
+ * Has the default rules added but can be overwritten in the constructor.
+ * Basically the strategy is to buy a stock if it rises 20% from a bottom and sell if it
+ * falls 20% (or 5/6) from a top when long.
+ * @extends Strategy
+ */
+class Flipper extends Strategy {
 	/**
 	 * These are the default rules for the strategy. Will probably not be overwritten very often.
 	 */
@@ -21,6 +28,14 @@ export default class Flipper extends Strategy {
 		regime: 'bull'
 	}
 
+	/**
+	 * Creates an instance of the Flipper Strategy.
+	 * @param {Object} params
+	 * @param {String} params.strategyName The name of the strategy
+	 * @param {Object} params.initialContext The initial context to start with. Useful to set inital bias etc.
+	 * @param {Object} params.rules the rules for the strategy. See `defaultRules` for the ones that are available.
+	 * @returns {Flipper}
+	 */
 	constructor({ strategyName = 'flipper', initialContext = {}, rules = {} } = {}) {
 		super({ strategyName, initialContext })
 
@@ -106,4 +121,10 @@ export default class Flipper extends Strategy {
 	updateRegime() {
 		return 'bull'
 	}
+
+	checkForTrigger({ highPrice, lowPrice, currentBias, signalBar, currentBar, stock }) {
+		return { signal: null, bias: 'bull' }
+	}
 }
+
+export default Flipper
