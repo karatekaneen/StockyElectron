@@ -28,13 +28,40 @@ export default class Flipper extends Strategy {
 		this.context = { ...this.defaultContext, ...initialContext } // Merge default context with the ones provided
 	}
 
-	getSignal({ signalBar, currentBar, stock, context }) {
+	/**
+	 * This is the function that's being called for every bar and updates context and checks for triggers.
+	 * @param {Object} params
+	 * @param {Object} params.signalBar "yesterdays" bar to check for signal to avoid look-ahead-bias.
+	 * @param {Object} params.currentBar "today" Will be used to give date and price (open) for entry/exit.
+	 * @param {Stock} params.stock The stock being tested. Should be the summary of the stock and not with the whole priceData array to keep size down.
+	 * @param {Object} params.context The context that's being carried between bars to keep the test's state.
+	 * @returns {Object} with `signal` (null if no signal is found, else Signal) and `context` to be carried to the next bar.
+	 */
+	processBar({ signalBar, currentBar, stock, context }) {
+		// Update the context with the latest highs and lows
 		const newContext = this.setHighLowPrices({
 			highPrice: context.highPrice,
 			lowPrice: context.lowPrice,
 			signalBar
 		})
-		console.log('pooop')
+
+		// Check the regime filter
+		newContext.regime = this.updateRegime()
+
+		// Check if the signalbar triggered anything. Will be null if no signal is given which is ok to return as it is
+		const { signal, bias } = this.checkForTrigger({
+			highPrice: newContext.highPrice,
+			lowPrice: newContext.lowPrice,
+			currentBias: context.bias,
+			signalBar,
+			currentBar,
+			stock
+		})
+
+		// Assign the latest bias
+		newContext.bias = bias
+
+		return { signal, context: newContext }
 	}
 
 	/**
@@ -74,5 +101,9 @@ export default class Flipper extends Strategy {
 		}
 
 		return output
+	}
+
+	updateRegime() {
+		return 'bull'
 	}
 }

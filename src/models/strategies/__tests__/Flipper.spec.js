@@ -34,13 +34,136 @@ describe('Flipper Strategy', () => {
 		expect(f.context.regime).toBe('bull')
 	})
 
-	describe('Get Signal', () => {
-		it.todo('Calls to update high & low prices')
-		it.todo('Calls to update regime')
-		it.todo('Checks if signal should be sent')
-		it.todo('Updates bias if signal is sent')
-		it.todo('Returns signal if it should, else null')
-		it.todo('Returns updated context')
+	describe('Process Bar', () => {
+		it('Calls to update high & low prices', () => {
+			const f = new Flipper()
+			f.setHighLowPrices = jest.fn().mockReturnValue({ highPrice: 200, lowPrice: 100 })
+			f.updateRegime = jest.fn().mockReturnValue('bull')
+			f.checkForTrigger = jest.fn().mockReturnValue({ signal: null, bias: 'bull' })
+
+			const resp = f.processBar({
+				signalBar: { a: 'this is my signal' },
+				currentBar: { b: 'this is my current bar' },
+				stock: { name: 'STONK' },
+				context: { highPrice: 2, lowPrice: 1 }
+			})
+
+			expect(f.setHighLowPrices).toHaveBeenCalledWith({
+				highPrice: 2,
+				lowPrice: 1,
+				signalBar: { a: 'this is my signal' }
+			})
+		})
+
+		it('Calls to update regime', () => {
+			const f = new Flipper()
+			f.setHighLowPrices = jest.fn().mockReturnValue({ highPrice: 200, lowPrice: 100 })
+			f.updateRegime = jest.fn().mockReturnValue('bull')
+			f.checkForTrigger = jest.fn().mockReturnValue({ signal: null, bias: 'bull' })
+
+			const resp = f.processBar({
+				signalBar: { a: 'this is my signal' },
+				currentBar: { b: 'this is my current bar' },
+				stock: { name: 'STONK' },
+				context: { highPrice: 2, lowPrice: 1 }
+			})
+
+			expect(f.updateRegime).toHaveBeenCalled()
+		})
+
+		it('Checks if signal should be sent', () => {
+			const f = new Flipper()
+			f.setHighLowPrices = jest.fn().mockReturnValue({ highPrice: 200, lowPrice: 100 })
+			f.updateRegime = jest.fn().mockReturnValue('bull')
+			f.checkForTrigger = jest.fn().mockReturnValue({ signal: null, bias: 'bull' })
+
+			const resp = f.processBar({
+				signalBar: { a: 'this is my signal' },
+				currentBar: { b: 'this is my current bar' },
+				stock: { name: 'STONK' },
+				context: { highPrice: 2, lowPrice: 1, bias: 'bear' }
+			})
+
+			expect(f.checkForTrigger).toHaveBeenCalledWith({
+				currentBar: { b: 'this is my current bar' },
+				currentBias: 'bear',
+				highPrice: 200,
+				lowPrice: 100,
+				signalBar: { a: 'this is my signal' },
+				stock: { name: 'STONK' }
+			})
+		})
+
+		it('Returns bias from checkForTrigger', () => {
+			const f = new Flipper()
+			f.setHighLowPrices = jest.fn().mockReturnValue({ highPrice: 200, lowPrice: 100 })
+			f.updateRegime = jest.fn().mockReturnValue('bull')
+			f.checkForTrigger = jest.fn().mockReturnValue({ signal: null, bias: 'bull' })
+
+			const resp = f.processBar({
+				signalBar: { a: 'this is my signal' },
+				currentBar: { b: 'this is my current bar' },
+				stock: { name: 'STONK' },
+				context: { highPrice: 2, lowPrice: 1, bias: 'bear' }
+			})
+
+			expect(resp.context.bias).toBe('bull')
+		})
+
+		it('Returns updated context', () => {
+			const f = new Flipper()
+			f.setHighLowPrices = jest.fn().mockReturnValue({ highPrice: 200, lowPrice: 100 })
+			f.updateRegime = jest.fn().mockReturnValue('bull')
+			f.checkForTrigger = jest.fn().mockReturnValue({ signal: null, bias: 'bull' })
+
+			const resp = f.processBar({
+				signalBar: { a: 'this is my signal' },
+				currentBar: { b: 'this is my current bar' },
+				stock: { name: 'STONK' },
+				context: { highPrice: 2, lowPrice: 1, bias: 'bear' }
+			})
+
+			expect(resp.context).toEqual({
+				bias: 'bull',
+				highPrice: 200,
+				lowPrice: 100,
+				regime: 'bull'
+			})
+		})
+
+		it('Returns signal as null if none is triggered', () => {
+			const f = new Flipper()
+			f.setHighLowPrices = jest.fn().mockReturnValue({ highPrice: 200, lowPrice: 100 })
+			f.updateRegime = jest.fn().mockReturnValue('bull')
+			f.checkForTrigger = jest.fn().mockReturnValue({ signal: null, bias: 'bull' })
+
+			const resp = f.processBar({
+				signalBar: { a: 'this is my signal' },
+				currentBar: { b: 'this is my current bar' },
+				stock: { name: 'STONK' },
+				context: { highPrice: 2, lowPrice: 1, bias: 'bear' }
+			})
+
+			expect(resp.signal).toBe(null)
+		})
+
+		it('Returns signal if it should', () => {
+			const f = new Flipper()
+			f.setHighLowPrices = jest.fn().mockReturnValue({ highPrice: 200, lowPrice: 100 })
+			f.updateRegime = jest.fn().mockReturnValue('bull')
+			f.checkForTrigger = jest
+				.fn()
+				.mockReturnValue({ signal: { type: 'BUY EVERYTHING' }, bias: 'bull' })
+
+			const resp = f.processBar({
+				signalBar: { a: 'this is my signal' },
+				currentBar: { b: 'this is my current bar' },
+				stock: { name: 'STONK' },
+				context: { highPrice: 2, lowPrice: 1, bias: 'bear' }
+			})
+
+			expect(resp.signal.type).toBe('BUY EVERYTHING')
+		})
 	})
 
 	describe('Set high / low prices', () => {
@@ -204,11 +327,6 @@ describe('Flipper Strategy', () => {
 
 			expect(resp).toEqual({ highPrice: 100, lowPrice: 70 })
 		})
-	})
-
-	describe('Context', () => {
-		it.todo('Moves down lowest price on new low if bearish/neutral bias')
-		it.todo('Moves up highest price on new high if bullish bias')
 	})
 
 	describe('Signaling', () => {
