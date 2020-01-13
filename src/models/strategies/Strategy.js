@@ -4,16 +4,11 @@ export default class Strategy {
 		this.strategyName = strategyName
 
 		if (signalFunction) {
-			this.getSignal = signalFunction
+			this.processBar = signalFunction
 		}
 	}
 
-	test({
-		stock,
-		startDate,
-		endDate = new Date().toISOString(),
-		initialContext = this.context
-	} = {}) {
+	test({ stock, startDate, endDate, initialContext = this.context } = {}) {
 		const testData = this.extractData({ priceData: stock.priceData, startDate, endDate })
 
 		// TODO It may be a good idea to refactor to pass all the data and index instead to allow for more complex calculations etc.
@@ -22,7 +17,7 @@ export default class Strategy {
 		const { signals, contextHistory, context } = testData.reduce(
 			(aggregate, currentBar, index, originalArr) => {
 				if (index > 0) {
-					const { signal, context: newContext } = this.getSignal({
+					const { signal, context: newContext } = this.processBar({
 						signalBar: originalArr[index - 1],
 						currentBar,
 						stock,
@@ -48,7 +43,7 @@ export default class Strategy {
 		return { signals, contextHistory, context }
 	}
 
-	getSignal() {
+	processBar() {
 		throw new Error('No signal function has been provided')
 	}
 

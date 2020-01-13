@@ -16,7 +16,7 @@ describe('Strategy class', () => {
 	it('Can take a signal function', () => {
 		const s = new Strategy({ signalFunction: jest.fn(() => 'woop') })
 
-		expect(s.getSignal()).toBe('woop')
+		expect(s.processBar()).toBe('woop')
 	})
 
 	it.todo('Saves test results to avoid running multiple times')
@@ -41,7 +41,7 @@ describe('Strategy class', () => {
 		it('Checks for signal every bar', () => {
 			const s = new Strategy()
 
-			s.getSignal = jest.fn().mockReturnValue({ signal: null, context: null })
+			s.processBar = jest.fn().mockReturnValue({ signal: null, context: null })
 
 			s.extractData = jest
 				.fn()
@@ -52,13 +52,13 @@ describe('Strategy class', () => {
 
 			s.test({ stock: mockStock, endDate })
 
-			expect(s.getSignal).toHaveBeenCalledTimes(2) // Not calling for the first bar due to lookback
+			expect(s.processBar).toHaveBeenCalledTimes(2) // Not calling for the first bar due to lookback
 		})
 
 		it('Updates context every bar', () => {
 			const s = new Strategy({ initialContext: null })
 
-			s.getSignal = jest
+			s.processBar = jest
 				.fn()
 				.mockReturnValueOnce({ signal: null, context: { call: 'first' } })
 				.mockReturnValueOnce({ signal: null, context: { call: 'second' } })
@@ -78,15 +78,15 @@ describe('Strategy class', () => {
 
 			s.test({ stock: mockStock, endDate })
 
-			expect(s.getSignal.mock.calls[0][0].context).toBe(null)
-			expect(s.getSignal.mock.calls[1][0].context).toEqual({ call: 'first' })
-			expect(s.getSignal.mock.calls[2][0].context).toEqual({ call: 'second' })
+			expect(s.processBar.mock.calls[0][0].context).toBe(null)
+			expect(s.processBar.mock.calls[1][0].context).toEqual({ call: 'first' })
+			expect(s.processBar.mock.calls[2][0].context).toEqual({ call: 'second' })
 		})
 
 		it('Returns historical context', () => {
 			const s = new Strategy({ initialContext: null })
 
-			s.getSignal = jest
+			s.processBar = jest
 				.fn()
 				.mockReturnValueOnce({ signal: null, context: { call: 'first' } })
 				.mockReturnValueOnce({ signal: null, context: { call: 'second' } })
@@ -116,7 +116,7 @@ describe('Strategy class', () => {
 		it('Does not add null signals', () => {
 			const s = new Strategy({ initialContext: null })
 
-			s.getSignal = jest
+			s.processBar = jest
 				.fn()
 				.mockReturnValueOnce({ signal: null, context: { call: 'first' } })
 				.mockReturnValueOnce({ signal: null, context: { call: 'second' } })
@@ -141,7 +141,7 @@ describe('Strategy class', () => {
 		it('Adds signals to array', () => {
 			const s = new Strategy({ initialContext: null })
 
-			s.getSignal = jest
+			s.processBar = jest
 				.fn()
 				.mockReturnValueOnce({ signal: null, context: { call: 'first' } })
 				.mockReturnValueOnce({ signal: { type: 'Enter' }, context: { call: 'second' } })
