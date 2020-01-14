@@ -1,6 +1,6 @@
-import Stock from '../../../src/models/Stock'
-import DataSeries from '../../../src/models/DataSeries'
-jest.mock('../../../src/models/DataSeries')
+import Stock from '../Stock'
+import DataSeries from '../DataSeries'
+jest.mock('../DataSeries')
 
 describe('Stock', () => {
 	beforeEach(() => {

@@ -1,4 +1,4 @@
-import DataSeries from '../../../src/models/DataSeries'
+import DataSeries from '../DataSeries'
 
 describe('DataSeries', () => {
 	describe('validateData', () => {

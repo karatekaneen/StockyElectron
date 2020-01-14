@@ -11,7 +11,7 @@
 		"postinstall": "electron-builder install-app-deps",
 		"postuninstall": "electron-builder install-app-deps",
 		"test:unit": "vue-cli-service test:unit --verbose --silent",
-		"testwatch": "vue-cli-service test:unit --watchAll --verbose --silent",
+		"testwatch": "vue-cli-service test:unit --watchAll --silent",
 		"version:patch": "npm version patch --git-tag-version false",
 		"version:minor": "npm version minor --git-tag-version false"
 	},
