@@ -25,6 +25,7 @@ class Flipper extends Strategy {
 		bias: 'neutral',
 		highPrice: null,
 		lowPrice: null,
+		triggerPrice: null,
 		regime: 'bull'
 	}
 
@@ -64,7 +65,7 @@ class Flipper extends Strategy {
 		newContext.regime = this.updateRegime()
 
 		// Check if the signalbar triggered anything. Will be null if no signal is given which is ok to return as it is
-		const { signal, bias } = this.checkForTrigger({
+		const { signal, bias, triggerPrice } = this.checkForTrigger({
 			highPrice: newContext.highPrice,
 			lowPrice: newContext.lowPrice,
 			currentBias: context.bias,
@@ -75,6 +76,9 @@ class Flipper extends Strategy {
 
 		// Assign the latest bias
 		newContext.bias = bias
+
+		// Add the latest trigger price:
+		newContext.triggerPrice = triggerPrice
 
 		return { signal, context: newContext }
 	}
