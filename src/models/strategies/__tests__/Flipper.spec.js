@@ -110,6 +110,24 @@ describe('Flipper Strategy', () => {
 			expect(resp.context.bias).toBe('bull')
 		})
 
+		it('Adds new triggerPrice to context', () => {
+			const f = new Flipper()
+			f.setHighLowPrices = jest.fn().mockReturnValue({ highPrice: 200, lowPrice: 100 })
+			f.updateRegime = jest.fn().mockReturnValue('bull')
+			f.checkForTrigger = jest
+				.fn()
+				.mockReturnValue({ signal: null, bias: 'bull', triggerPrice: 11000000 })
+
+			const resp = f.processBar({
+				signalBar: { a: 'this is my signal' },
+				currentBar: { b: 'this is my current bar' },
+				stock: { name: 'STONK' },
+				context: { highPrice: 2, lowPrice: 1, bias: 'bear', triggerPrice: 25 }
+			})
+
+			expect(resp.context.triggerPrice).toBe(11000000)
+		})
+
 		it('Returns updated context', () => {
 			const f = new Flipper()
 			f.setHighLowPrices = jest.fn().mockReturnValue({ highPrice: 200, lowPrice: 100 })
@@ -164,6 +182,10 @@ describe('Flipper Strategy', () => {
 
 			expect(resp.signal.type).toBe('BUY EVERYTHING')
 		})
+
+		it.todo(
+			'Can create a "pending signal" on the last bar before the next one has opened. Useful for live trading.'
+		)
 	})
 
 	describe('Set high / low prices', () => {
