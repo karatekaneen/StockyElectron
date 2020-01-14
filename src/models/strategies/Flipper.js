@@ -87,7 +87,6 @@ class Flipper extends Strategy {
 	 * @param {Object} params
 	 * @param {number|null} params.highPrice the current high to be used for the signaling. Is null by default
 	 * @param {number|null} params.lowPrice the current low to be used for the signaling. Is null by default
-	 * @param {Object} params.signalBar The bar to check if it triggered any signals
 	 * @param {Boolean} params.useHighAndLow If the function should use the bar's high/low or only close value.
 	 * @returns {Object} with highPrice
 	 */
@@ -125,6 +124,18 @@ class Flipper extends Strategy {
 		return 'bull'
 	}
 
+	/**
+	 * Checks if "yesterday" generated any actions to be executed on "today's" open.
+	 * @param {Object} params
+	 * @param {Number} params.highPrice The highest price since reset
+	 * @param {Number} params.lowPrice The lowest price since reset
+	 * @param {String} params.currentBias "bull", "neutral" or "bear" to know how to handle price action
+	 * @param {Object} params.signalBar "yesterdays" bar to check for signal to avoid look-ahead-bias.
+	 * @param {Object} params.currentBar "today" Will be used to give date and price (open) for entry/exit.
+	 * @param {Stock} params.stock The stock being tested. Should be the summary of the stock and not with the whole priceData array to keep size down.
+	 * @param {Number|null} params.triggerPrice the price where expected to take action next time. Not used in strategy, only for visualization after.
+	 * @returns {Object} with `signal` and `context` props.
+	 */
 	checkForTrigger({
 		highPrice,
 		lowPrice,
@@ -164,8 +175,26 @@ class Flipper extends Strategy {
 				context.triggerPrice = context.lowPrice * this.rules.entryFactor
 			}
 		} else if (currentBias === 'bull') {
-			// Do something
-			console.log('hellow')
+			// TODO Add regime check here to know what factor to use
+			// Exit signal:
+			if (signalBar.close <= highPrice * this.rules.exitFactor) {
+				// Update context
+				context.bias = 'bear'
+				context.lowPrice = signalBar.close
+				context.triggerPrice = context.lowPrice * this.rules.entryFactor
+
+				// Create the signal instance
+				signal = new Signal({
+					stock,
+					price: currentBar.open,
+					date: currentBar.date,
+					action: 'sell',
+					type: 'exit'
+				})
+			} else {
+				// IF no signal was generated the trigger price should still be updated.
+				context.triggerPrice = context.highPrice * this.rules.exitFactor
+			}
 		} else {
 			throw new Error('Invalid bias value')
 		}

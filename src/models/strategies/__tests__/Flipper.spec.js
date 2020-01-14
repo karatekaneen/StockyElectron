@@ -360,6 +360,8 @@ describe('Flipper Strategy', () => {
 	})
 
 	describe('check for trigger', () => {
+		it.todo('Should be able to generate pending signals for live trading')
+
 		describe('Bear/Neutral initial bias', () => {
 			it('Sets bias to bull if long entry triggered when bias is bearish', () => {
 				const f = new Flipper()
@@ -529,7 +531,156 @@ describe('Flipper Strategy', () => {
 			it.todo('Should check regime before entering')
 		})
 
-		it.todo('Generates exit signal if price falls 1/6 from high and bullish bias')
+		describe('Bull initial bias', () => {
+			it('Sets bias to bear if long exit triggered when bias is bullish', () => {
+				const f = new Flipper()
+
+				const { context } = f.checkForTrigger({
+					highPrice: 100,
+					lowPrice: 50,
+					currentBias: 'bull',
+					signalBar: { close: 80 },
+					triggerPrice: null,
+					currentBar: {
+						open: 125,
+						date: new Date('2019-12-13')
+					}
+				})
+
+				expect(context.bias).toBe('bear')
+			})
+
+			it('Does not change bias from bear to bull without trigger', () => {
+				const f = new Flipper()
+
+				const { context } = f.checkForTrigger({
+					highPrice: 120,
+					lowPrice: 50,
+					currentBias: 'bull',
+					signalBar: { close: 100.1 },
+					triggerPrice: null,
+					currentBar: {
+						open: 125,
+						date: new Date('2019-12-13')
+					}
+				})
+
+				expect(context.bias).toBe('bull')
+			})
+
+			it('Resets low price when getting long exit trigger', () => {
+				const f = new Flipper()
+
+				const { context } = f.checkForTrigger({
+					highPrice: 120,
+					lowPrice: 100,
+					currentBias: 'bull',
+					signalBar: { close: 99 },
+					triggerPrice: null,
+					currentBar: {
+						open: 125,
+						date: new Date('2019-12-13')
+					}
+				})
+
+				expect(context.lowPrice).toBe(99)
+			})
+
+			it('Sets triggerPrice to entry level when getting long exit trigger', () => {
+				const f = new Flipper()
+
+				const { context } = f.checkForTrigger({
+					highPrice: 120,
+					lowPrice: 100,
+					currentBias: 'bull',
+					signalBar: { close: 99 },
+					triggerPrice: null,
+					currentBar: {
+						open: 125,
+						date: new Date('2019-12-13')
+					}
+				})
+
+				expect(context.triggerPrice).toBe(118.8)
+			})
+
+			it('Generates Signal instance if long exit trigger', () => {
+				const f = new Flipper()
+
+				f.checkForTrigger({
+					highPrice: 120,
+					lowPrice: 99,
+					currentBias: 'bull',
+					signalBar: { close: 99 },
+					triggerPrice: null,
+					currentBar: {
+						open: 125,
+						date: new Date('2019-12-13')
+					}
+				})
+
+				expect(Signal).toHaveBeenCalledTimes(1)
+			})
+
+			it('Creates Signal instance with the data from the day after', () => {
+				const f = new Flipper()
+
+				f.checkForTrigger({
+					highPrice: 120,
+					lowPrice: 99,
+					currentBias: 'bull',
+					signalBar: { close: 99, open: 100, date: new Date('2019-12-12') },
+					triggerPrice: null,
+					currentBar: {
+						open: 101,
+						date: new Date('2019-12-13'),
+						close: 200
+					}
+				})
+
+				const { date, price } = Signal.mock.calls[0][0]
+				expect(date).toEqual(new Date('2019-12-13'))
+				expect(price).toBe(101)
+			})
+
+			it('returns Signal instance if created', () => {
+				const f = new Flipper()
+
+				const { signal } = f.checkForTrigger({
+					highPrice: 120,
+					lowPrice: 100,
+					currentBias: 'bull',
+					signalBar: { close: 99 },
+					triggerPrice: null,
+					currentBar: {
+						open: 125,
+						date: new Date('2019-12-13')
+					}
+				})
+
+				expect(signal instanceof Signal).toBe(true)
+			})
+
+			it('sets triggerPrice even if no long entry signal is triggered', () => {
+				const f = new Flipper()
+
+				const { context } = f.checkForTrigger({
+					highPrice: 120,
+					lowPrice: 50,
+					currentBias: 'bull',
+					signalBar: { close: 108 },
+					triggerPrice: null,
+					currentBar: {
+						open: 125,
+						date: new Date('2019-12-13')
+					}
+				})
+
+				expect(context.triggerPrice).toBe(100)
+			})
+
+			it.todo('Should check regime before deciding what exitfactor to use')
+		})
 	})
 
 	describe('Regime filtering', () => {
