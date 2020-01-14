@@ -1,4 +1,10 @@
 import Flipper from '../Flipper'
+import Signal from '../../Signal'
+jest.mock('../../Signal')
+
+beforeEach(() => {
+	Signal.mockClear()
+})
 
 describe('Flipper Strategy', () => {
 	it('Has a working constructor', () => {
@@ -98,7 +104,7 @@ describe('Flipper Strategy', () => {
 			const f = new Flipper()
 			f.setHighLowPrices = jest.fn().mockReturnValue({ highPrice: 200, lowPrice: 100 })
 			f.updateRegime = jest.fn().mockReturnValue('bull')
-			f.checkForTrigger = jest.fn().mockReturnValue({ signal: null, bias: 'bull' })
+			f.checkForTrigger = jest.fn().mockReturnValue({ signal: null, context: { bias: 'bull' } })
 
 			const resp = f.processBar({
 				signalBar: { a: 'this is my signal' },
@@ -116,7 +122,7 @@ describe('Flipper Strategy', () => {
 			f.updateRegime = jest.fn().mockReturnValue('bull')
 			f.checkForTrigger = jest
 				.fn()
-				.mockReturnValue({ signal: null, bias: 'bull', triggerPrice: 11000000 })
+				.mockReturnValue({ signal: null, context: { bias: 'bull', triggerPrice: 11000000 } })
 
 			const resp = f.processBar({
 				signalBar: { a: 'this is my signal' },
@@ -132,7 +138,7 @@ describe('Flipper Strategy', () => {
 			const f = new Flipper()
 			f.setHighLowPrices = jest.fn().mockReturnValue({ highPrice: 200, lowPrice: 100 })
 			f.updateRegime = jest.fn().mockReturnValue('bull')
-			f.checkForTrigger = jest.fn().mockReturnValue({ signal: null, bias: 'bull' })
+			f.checkForTrigger = jest.fn().mockReturnValue({ signal: null, context: { bias: 'bull' } })
 
 			const resp = f.processBar({
 				signalBar: { a: 'this is my signal' },
@@ -186,6 +192,8 @@ describe('Flipper Strategy', () => {
 		it.todo(
 			'Can create a "pending signal" on the last bar before the next one has opened. Useful for live trading.'
 		)
+
+		it.todo('can update high/low price based on the triggering')
 	})
 
 	describe('Set high / low prices', () => {
@@ -351,8 +359,176 @@ describe('Flipper Strategy', () => {
 		})
 	})
 
-	describe('Signaling', () => {
-		it.todo('Generates entry signal if price has risen 1/5 from low and bearish bias')
+	describe('check for trigger', () => {
+		describe('Bear/Neutral initial bias', () => {
+			it('Sets bias to bull if long entry triggered when bias is bearish', () => {
+				const f = new Flipper()
+
+				const { context } = f.checkForTrigger({
+					highPrice: 200,
+					lowPrice: 100,
+					currentBias: 'bear',
+					signalBar: { close: 120 },
+					triggerPrice: null,
+					currentBar: {
+						open: 125,
+						date: new Date('2019-12-13')
+					}
+				})
+
+				expect(context.bias).toBe('bull')
+			})
+
+			it('Does not change bias from bear to bull without trigger', () => {
+				const f = new Flipper()
+
+				const { context } = f.checkForTrigger({
+					highPrice: 200,
+					lowPrice: 100,
+					currentBias: 'bear',
+					signalBar: { close: 119.9999 },
+					triggerPrice: null,
+					currentBar: {
+						open: 125,
+						date: new Date('2019-12-13')
+					}
+				})
+
+				expect(context.bias).toBe('bear')
+			})
+
+			it('Sets bias to bull if long entry triggered when bias is neutral', () => {
+				const f = new Flipper()
+
+				const { context } = f.checkForTrigger({
+					highPrice: 200,
+					lowPrice: 100,
+					currentBias: 'bear',
+					signalBar: { close: 120 },
+					triggerPrice: null,
+					currentBar: {
+						open: 125,
+						date: new Date('2019-12-13')
+					}
+				})
+
+				expect(context.bias).toBe('bull')
+			})
+
+			it('Resets high price when getting long entry trigger', () => {
+				const f = new Flipper()
+
+				const { context } = f.checkForTrigger({
+					highPrice: 200,
+					lowPrice: 100,
+					currentBias: 'bear',
+					signalBar: { close: 120 },
+					triggerPrice: null,
+					currentBar: {
+						open: 125,
+						date: new Date('2019-12-13')
+					}
+				})
+
+				expect(context.highPrice).toBe(120)
+			})
+
+			it('Sets triggerPrice to stop-loss level when getting long entry trigger', () => {
+				const f = new Flipper()
+
+				const { context } = f.checkForTrigger({
+					highPrice: 200,
+					lowPrice: 100,
+					currentBias: 'bear',
+					signalBar: { close: 120 },
+					triggerPrice: null,
+					currentBar: {
+						open: 125,
+						date: new Date('2019-12-13')
+					}
+				})
+
+				expect(context.triggerPrice).toBe(100)
+			})
+
+			it('Generates Signal instance if long entry trigger', () => {
+				const f = new Flipper()
+
+				f.checkForTrigger({
+					highPrice: 200,
+					lowPrice: 100,
+					currentBias: 'bear',
+					signalBar: { close: 120 },
+					triggerPrice: null,
+					currentBar: {
+						open: 125,
+						date: new Date('2019-12-13')
+					}
+				})
+
+				expect(Signal).toHaveBeenCalledTimes(1)
+			})
+
+			it('Creates Signal instance with the data from the day after', () => {
+				const f = new Flipper()
+
+				f.checkForTrigger({
+					highPrice: 200,
+					lowPrice: 100,
+					currentBias: 'bear',
+					signalBar: { close: 120, open: 100, date: new Date('2019-12-12') },
+					triggerPrice: null,
+					currentBar: {
+						open: 125,
+						date: new Date('2019-12-13'),
+						close: 200
+					}
+				})
+
+				const { date, price } = Signal.mock.calls[0][0]
+				expect(date).toEqual(new Date('2019-12-13'))
+				expect(price).toBe(125)
+			})
+
+			it('returns Signal instance if created', () => {
+				const f = new Flipper()
+
+				const { signal } = f.checkForTrigger({
+					highPrice: 200,
+					lowPrice: 100,
+					currentBias: 'bear',
+					signalBar: { close: 120 },
+					triggerPrice: null,
+					currentBar: {
+						open: 125,
+						date: new Date('2019-12-13')
+					}
+				})
+
+				expect(signal instanceof Signal).toBe(true)
+			})
+
+			it('sets triggerPrice even if no long entry signal is triggered', () => {
+				const f = new Flipper()
+
+				const { context } = f.checkForTrigger({
+					highPrice: 200,
+					lowPrice: 100,
+					currentBias: 'bear',
+					signalBar: { close: 108 },
+					triggerPrice: null,
+					currentBar: {
+						open: 125,
+						date: new Date('2019-12-13')
+					}
+				})
+
+				expect(context.triggerPrice).toBe(120)
+			})
+
+			it.todo('Should check regime before entering')
+		})
+
 		it.todo('Generates exit signal if price falls 1/6 from high and bullish bias')
 	})
 

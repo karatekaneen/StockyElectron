@@ -1,4 +1,5 @@
 import Strategy from './Strategy'
+import Signal from '../Signal'
 
 /**
  * "20% Flipper" by Nick Radge.
@@ -55,7 +56,7 @@ class Flipper extends Strategy {
 	 */
 	processBar({ signalBar, currentBar, stock, context }) {
 		// Update the context with the latest highs and lows
-		const newContext = this.setHighLowPrices({
+		let newContext = this.setHighLowPrices({
 			highPrice: context.highPrice,
 			lowPrice: context.lowPrice,
 			signalBar
@@ -65,20 +66,18 @@ class Flipper extends Strategy {
 		newContext.regime = this.updateRegime()
 
 		// Check if the signalbar triggered anything. Will be null if no signal is given which is ok to return as it is
-		const { signal, bias, triggerPrice } = this.checkForTrigger({
+		const { signal, context: maybeUpdatedContext } = this.checkForTrigger({
 			highPrice: newContext.highPrice,
 			lowPrice: newContext.lowPrice,
 			currentBias: context.bias,
+			triggerPrice: context.triggerPrice,
 			signalBar,
 			currentBar,
 			stock
 		})
 
-		// Assign the latest bias
-		newContext.bias = bias
-
-		// Add the latest trigger price:
-		newContext.triggerPrice = triggerPrice
+		// The context may be updated by the triggering so using the spread to overwrite old values.
+		newContext = { ...newContext, ...maybeUpdatedContext }
 
 		return { signal, context: newContext }
 	}
@@ -126,8 +125,51 @@ class Flipper extends Strategy {
 		return 'bull'
 	}
 
-	checkForTrigger({ highPrice, lowPrice, currentBias, signalBar, currentBar, stock }) {
-		return { signal: null, bias: 'bull' }
+	checkForTrigger({
+		highPrice,
+		lowPrice,
+		currentBias,
+		signalBar,
+		currentBar,
+		stock,
+		triggerPrice
+	}) {
+		const context = {
+			bias: currentBias,
+			highPrice,
+			lowPrice,
+			triggerPrice
+		}
+
+		let signal = null
+
+		// TODO Add check for regime as well.
+		if (currentBias === 'bear' || currentBias === 'neutral') {
+			if (signalBar.close >= lowPrice * this.rules.entryFactor) {
+				// Update the context
+				context.bias = 'bull'
+				context.highPrice = signalBar.close
+				context.triggerPrice = context.highPrice * this.rules.exitFactor
+
+				// Create the signal instance
+				signal = new Signal({
+					stock,
+					price: currentBar.open,
+					date: currentBar.date,
+					action: 'buy',
+					type: 'enter'
+				})
+			} else {
+				// IF no signal was generated the trigger price should still be updated.
+				context.triggerPrice = context.lowPrice * this.rules.entryFactor
+			}
+		} else if (currentBias === 'bull') {
+			// Do something
+			console.log('hellow')
+		} else {
+			throw new Error('Invalid bias value')
+		}
+		return { signal, context }
 	}
 }
 
