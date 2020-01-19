@@ -10,27 +10,6 @@ import Signal from '../Signal'
  */
 class Flipper extends Strategy {
 	/**
-	 * These are the default rules for the strategy. Will probably not be overwritten very often.
-	 */
-	defaultRules = {
-		entryFactor: 6 / 5,
-		exitFactor: 5 / 6,
-		entryInBearishRegime: false,
-		bearishRegimeExitFactor: 11 / 12
-	}
-
-	/**
-	 * This is the default context that's assigned if none is provided initially.
-	 */
-	defaultContext = {
-		bias: 'neutral',
-		highPrice: null,
-		lowPrice: null,
-		triggerPrice: null,
-		regime: 'bull'
-	}
-
-	/**
 	 * Creates an instance of the Flipper Strategy.
 	 * @param {Object} params
 	 * @param {String} params.strategyName The name of the strategy
@@ -41,8 +20,29 @@ class Flipper extends Strategy {
 	constructor({ strategyName = 'flipper', initialContext = {}, rules = {} } = {}) {
 		super({ strategyName, initialContext })
 
-		this.rules = { ...this.defaultRules, ...rules } // Merge the default rules with the ones given.
-		this.context = { ...this.defaultContext, ...initialContext } // Merge default context with the ones provided
+		/**
+		 * These are the default rules for the strategy. Will probably not be overwritten very often.
+		 */
+		const defaultRules = {
+			entryFactor: 6 / 5,
+			exitFactor: 5 / 6,
+			entryInBearishRegime: false,
+			bearishRegimeExitFactor: 11 / 12
+		}
+
+		/**
+		 * This is the default context that's assigned if none is provided initially.
+		 */
+		const defaultContext = {
+			bias: 'neutral',
+			highPrice: null,
+			lowPrice: null,
+			triggerPrice: null,
+			regime: 'bull'
+		}
+
+		this.rules = { ...defaultRules, ...rules } // Merge the default rules with the ones given.
+		this.context = { ...defaultContext, ...initialContext } // Merge default context with the ones provided
 	}
 
 	/**
