@@ -56,6 +56,7 @@ class Signal {
 			typeof type === 'string' &&
 			(type.toLowerCase() === 'enter' || type.toLowerCase() === 'exit')
 
+		// On the last bar price and date WILL be null because the next day hasn't opened yet.
 		const isCurrentBarDataValid =
 			(isDateValid && isPriceValid) || (date === null && price === null)
 
