@@ -29,6 +29,7 @@ class Signal {
 			this.date = date
 			this.action = action.toLowerCase()
 			this.type = type
+			this.status = date === null && price === null ? 'pending' : 'executed'
 		} else {
 			throw new Error('Required field missing')
 		}
@@ -55,7 +56,10 @@ class Signal {
 			typeof type === 'string' &&
 			(type.toLowerCase() === 'enter' || type.toLowerCase() === 'exit')
 
-		return isStockValid && isPriceValid && isDateValid && isActionValid && isTypeValid
+		const isCurrentBarDataValid =
+			(isDateValid && isPriceValid) || (date === null && price === null)
+
+		return isStockValid && isCurrentBarDataValid && isActionValid && isTypeValid
 	}
 }
 
