@@ -76,7 +76,13 @@ export default class Stock {
 			if (!pricePoint.date) throw new Error('Date is required')
 			else {
 				const d = new Date(pricePoint.date)
-				pricePoint.time = `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`
+
+				// Helper function to always get two-digit month and days, i.e. 01 instead of 1 for january.
+				const pad = num => (num < 10 ? num.toString().padStart(2, '0') : num.toString())
+
+				const month = pad(d.getMonth() + 1)
+				const date = pad(d.getDate())
+				pricePoint.time = `${d.getFullYear()}-${month}-${date}`
 				return pricePoint
 			}
 		})

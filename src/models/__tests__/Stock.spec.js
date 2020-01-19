@@ -17,8 +17,8 @@ describe('Stock', () => {
 	describe('dateToTime', () => {
 		it('Returns a correctly formatted date string when given ISO date', () => {
 			const s = new Stock({})
-			const resp = s.dateToTime([{ date: '2019-10-26T14:50:10.462Z' }])
-			expect(resp[0].time).toBe('2019-10-26')
+			const resp = s.dateToTime([{ date: '2020-01-05T14:50:10.462Z' }])
+			expect(resp[0].time).toBe('2020-01-05')
 		})
 
 		it('throws if date is falsy', () => {
