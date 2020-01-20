@@ -83,6 +83,8 @@ export default class Stock {
 				const month = pad(d.getMonth() + 1)
 				const date = pad(d.getDate())
 				pricePoint.time = `${d.getFullYear()}-${month}-${date}`
+				pricePoint.date = d
+
 				return pricePoint
 			}
 		})

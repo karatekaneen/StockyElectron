@@ -1,6 +1,7 @@
 import { ipcMain as _ipcMain } from 'electron'
 import { DataFetcher as _DataFetcher } from './DataFetcher'
 import _Flipper from '../models/strategies/Flipper'
+import stock from '../../teststock.json'
 
 export const createInitApp = ({
 	ipcMain = _ipcMain,
@@ -22,8 +23,14 @@ export const createInitApp = ({
 
 		ipcMain.on('test-strategy', async (event, arg) => {
 			const flipper = new Flipper()
-			const resp = flipper.test()
-			event.reply('test-strategy', resp)
+			stock.priceData = stock.priceData.map(d => {
+				d.date = new Date(d.date)
+				return d
+			})
+			const { signals, context } = flipper.test({ stock })
+
+			// console.log(JSON.stringify({ signals, context }, null, 2))
+			event.reply('test-strategy', { signals, context })
 		})
 	}
 	return initApp

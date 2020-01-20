@@ -1,10 +1,12 @@
 import _axios from 'axios'
 import Stock from '../models/Stock'
+import _fs from 'fs'
 
 export class DataFetcher {
-	constructor({ axios = _axios, API_URL }) {
+	constructor({ axios = _axios, API_URL, fs = _fs.promises }) {
 		this.API_URL = API_URL
 		this.axios = axios
+		this.fs = fs
 	}
 
 	async fetchStock({
@@ -15,6 +17,8 @@ export class DataFetcher {
 		const { data } = await this.axios.post(this.API_URL, { query })
 		console.log(data)
 		const stock = new Stock({ data: data.data.stock })
+
+		await this.fs.writeFile('./teststock.json', JSON.stringify(stock, null, 2))
 		return stock
 	}
 
