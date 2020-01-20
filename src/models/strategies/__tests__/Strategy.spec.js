@@ -206,14 +206,17 @@ describe('Strategy class', () => {
 			expect(signals).toEqual([{ type: 'Enter' }, { type: 'Exit' }])
 		})
 
+		it.todo('Generates exit signal for open position if signal array length is odd')
+		it.todo('Adds data about open profit if position open on test end')
+		it.todo('Throws if signals length is odd and last signal is to exit')
+
 		it.todo('Checks for identical tests before running')
 	})
 
 	describe('Summarize Signals', () => {
 		it.todo('Groups entry & exit signals together if signal array length is even')
-		it.todo('Generates exit signal for open position if signal array length is odd')
-		it.todo('Throws if signals length is odd and last signal is to exit')
 		it.todo('Calls to extract the price data between entry and exit')
+		it.todo('Throws if array length is uneven')
 		it.todo('Creates Trade instance with entry, exit and pricedata')
 		it.todo('Return array of Trades')
 	})

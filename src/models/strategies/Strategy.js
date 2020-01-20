@@ -48,6 +48,23 @@ export default class Strategy {
 						if (pendingSignal) {
 							aggregate.pendingSignal = pendingSignal
 						}
+
+						// Check for open positions:
+						if (
+							aggregate.signals.length % 2 === 1 &&
+							aggregate.signals[aggregate.signals.length - 1].type === 'enter'
+						) {
+							// Open position
+							console.log('Open')
+						} else if (
+							aggregate.signals.length % 2 === 1 &&
+							aggregate.signals[aggregate.signals.length - 1].type === 'exit'
+						) {
+							// Logic error somewhere :(
+							throw new Error(
+								'Logic error found. Uneven length on signal array and last signal was to exit'
+							)
+						}
 					}
 				}
 
@@ -62,25 +79,16 @@ export default class Strategy {
 			}
 		)
 
-		const trades = this.summarizeSignals(signals)
+		const trades = this.summarizeSignals({ signals, priceData })
 
 		return { signals, contextHistory, context, pendingSignal }
 	}
 
-	summarizeSignals(signals) {
-		const trades = []
+	summarizeSignals({ signals, priceData }) {
 		const numberOfSignals = signals.length
 
 		if (numberOfSignals > 0) {
-			if (numberOfSignals % 2 === 0 && signals[signals.length - 1].type === 'exit') {
-				// happy path
-				console.log('Happy')
-			} else if (numberOfSignals % 2 === 1 && signals[signals.length - 1].type === 'enter') {
-				// Open position
-				console.log('Open')
-			} else {
-				// Logic error somewhere :(
-			}
+			const trades = []
 
 			return trades
 		} else {
