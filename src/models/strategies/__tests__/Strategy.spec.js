@@ -52,7 +52,7 @@ describe('Strategy class', () => {
 
 			s.test({ stock: mockStock, endDate })
 
-			expect(s.processBar).toHaveBeenCalledTimes(2) // Not calling for the first bar due to lookback
+			expect(s.processBar).toHaveBeenCalledTimes(3) // Not calling for the first bar due to lookback but twice on the last to look for pending bars
 		})
 
 		it('Updates context every bar', () => {
@@ -63,6 +63,7 @@ describe('Strategy class', () => {
 				.mockReturnValueOnce({ signal: null, context: { call: 'first' } })
 				.mockReturnValueOnce({ signal: null, context: { call: 'second' } })
 				.mockReturnValueOnce({ signal: null, context: { call: 'third' } })
+				.mockReturnValueOnce({ signal: null, context: { call: 'fourth' } })
 
 			s.extractData = jest
 				.fn()
@@ -81,9 +82,10 @@ describe('Strategy class', () => {
 			expect(s.processBar.mock.calls[0][0].context).toBe(null)
 			expect(s.processBar.mock.calls[1][0].context).toEqual({ call: 'first' })
 			expect(s.processBar.mock.calls[2][0].context).toEqual({ call: 'second' })
+			expect(s.processBar.mock.calls[3][0].context).toEqual({ call: 'third' })
 		})
 
-		it.only('Checks for pending signals on last bar', () => {
+		it('Checks for pending signals on last bar', () => {
 			const s = new Strategy({ initialContext: null })
 
 			s.processBar = jest
@@ -129,6 +131,7 @@ describe('Strategy class', () => {
 				.mockReturnValueOnce({ signal: null, context: { call: 'first' } })
 				.mockReturnValueOnce({ signal: null, context: { call: 'second' } })
 				.mockReturnValueOnce({ signal: null, context: { call: 'third' } })
+				.mockReturnValueOnce({ signal: null, context: { call: 'fourth' } })
 
 			s.extractData = jest
 				.fn()
@@ -159,6 +162,7 @@ describe('Strategy class', () => {
 				.mockReturnValueOnce({ signal: null, context: { call: 'first' } })
 				.mockReturnValueOnce({ signal: null, context: { call: 'second' } })
 				.mockReturnValueOnce({ signal: null, context: { call: 'third' } })
+				.mockReturnValueOnce({ signal: null, context: { call: 'fourth' } })
 
 			s.extractData = jest
 				.fn()
@@ -184,6 +188,7 @@ describe('Strategy class', () => {
 				.mockReturnValueOnce({ signal: null, context: { call: 'first' } })
 				.mockReturnValueOnce({ signal: { type: 'Enter' }, context: { call: 'second' } })
 				.mockReturnValueOnce({ signal: { type: 'Exit' }, context: { call: 'third' } })
+				.mockReturnValueOnce({ signal: null, context: { call: 'fourth' } })
 
 			s.extractData = jest
 				.fn()
@@ -202,5 +207,14 @@ describe('Strategy class', () => {
 		})
 
 		it.todo('Checks for identical tests before running')
+	})
+
+	describe('Summarize Signals', () => {
+		it.todo('Groups entry & exit signals together if signal array length is even')
+		it.todo('Generates exit signal for open position if signal array length is odd')
+		it.todo('Throws if signals length is odd and last signal is to exit')
+		it.todo('Calls to extract the price data between entry and exit')
+		it.todo('Creates Trade instance with entry, exit and pricedata')
+		it.todo('Return array of Trades')
 	})
 })
