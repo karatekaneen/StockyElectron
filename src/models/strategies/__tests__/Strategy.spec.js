@@ -83,6 +83,44 @@ describe('Strategy class', () => {
 			expect(s.processBar.mock.calls[2][0].context).toEqual({ call: 'second' })
 		})
 
+		it.only('Checks for pending signals on last bar', () => {
+			const s = new Strategy({ initialContext: null })
+
+			s.processBar = jest
+				.fn()
+				.mockReturnValueOnce({ signal: null, context: { call: 'first' } })
+				.mockReturnValueOnce({ signal: null, context: { call: 'second' } })
+				.mockReturnValueOnce({ signal: null, context: { call: 'third' } })
+				.mockReturnValueOnce({
+					signal: { name: 'buy everything' },
+					context: { call: 'fourth' }
+				})
+
+			s.extractData = jest.fn(({ priceData }) => priceData)
+
+			const mockStock = {
+				priceData: [
+					{ open: 25, high: 32, low: 29, close: 15 },
+					{ open: 32, high: 534, low: 64, close: 4 },
+					{ open: 53, high: 53, low: 54, close: 2 },
+					{ open: 43, high: 65, low: 76, close: 34 }
+				]
+			}
+
+			const { pendingSignal } = s.test({ stock: mockStock })
+
+			expect(s.processBar).toHaveBeenCalledTimes(mockStock.priceData.length) // Skips the first bar but two times on the last
+			expect(s.processBar.mock.calls[3][0].currentBar).toEqual({
+				close: null,
+				date: null,
+				high: null,
+				low: null,
+				open: null
+			})
+
+			expect(pendingSignal).toEqual({ name: 'buy everything' })
+		})
+
 		it('Returns historical context', () => {
 			const s = new Strategy({ initialContext: null })
 
