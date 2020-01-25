@@ -27,7 +27,13 @@ export default class Strategy {
 		// TODO It may be a good idea to refactor to pass all the data and index instead to allow for more complex calculations etc.
 		// ? Maybe the better way is to add ability to override the default test function
 		// Run the test in a reduce:
-		const { signals, contextHistory, context, pendingSignal } = testData.reduce(
+		const {
+			signals,
+			contextHistory,
+			context,
+			pendingSignal,
+			closeOpenPosition
+		} = testData.reduce(
 			(aggregate, currentBar, index, originalArr) => {
 				if (index > 0) {
 					const { signal, context: newContext } = this.processBar({
@@ -60,7 +66,7 @@ export default class Strategy {
 							aggregate.pendingSignal = pendingSignal
 						}
 
-						const closeOpenPosition = this.handleOpenPositions({
+						aggregate.closeOpenPosition = this.handleOpenPositions({
 							signals: aggregate.signals,
 							currentBar,
 							context: aggregate.context,
@@ -76,13 +82,14 @@ export default class Strategy {
 				signals: [],
 				context: initialContext,
 				contextHistory: [initialContext],
-				pendingSignal: null
+				pendingSignal: null,
+				closeOpenPosition: null
 			}
 		)
 
-		const trades = this.summarizeSignals({ signals, priceData })
+		const trades = this.summarizeSignals({ signals, priceData, closeOpenPosition })
 
-		return { signals, contextHistory, context, pendingSignal }
+		return { signals, contextHistory, context, pendingSignal, closeOpenPosition }
 	}
 
 	/**
@@ -155,16 +162,51 @@ export default class Strategy {
 		return closeOpenPosition
 	}
 
-	summarizeSignals({ signals, priceData }) {
+	summarizeSignals({ signals, priceData, closeOpenPosition }) {
 		const numberOfSignals = signals.length
 
 		if (numberOfSignals > 0) {
+			const isOddNumber = numberOfSignals % 2 === 1
+			const lastSignalType = signals[signals.length - 1].type
+
+			// Early indication that something is wrong
+			if ((isOddNumber && !closeOpenPosition) || (!isOddNumber && lastSignalType === 'enter')) {
+				throw new Error('No exit signal for open position provided')
+			}
+
 			const trades = []
 			// https://medium.com/@Dragonza/four-ways-to-chunk-an-array-e19c889eac4
 			return trades
 		} else {
 			return []
 		}
+	}
+
+	groupSignals(signals, groupSize = 2) {
+		let index = 0
+		const output = []
+
+		// Split up the array into smaller arrays of 2
+		while (index < signals.length) {
+			output.push(signals.slice(index, groupSize + index))
+			index += groupSize
+		}
+
+		// Check if it has invalid structure
+		const hasInvalidSignals = output.some(arr => {
+			const isInvalidLength = arr.length !== 2
+			const hasInvalidSignalTypes =
+				(arr[0] && arr[0].type !== 'enter') || (arr[1] && arr[1].type !== 'exit')
+			// TODO Add optional chaining here when able to.
+
+			return isInvalidLength || hasInvalidSignalTypes
+		})
+
+		if (hasInvalidSignals) {
+			throw new Error('Invalid sequence or number of signals')
+		}
+
+		return output
 	}
 
 	processBar() {

@@ -442,11 +442,70 @@ describe('Strategy class', () => {
 	})
 
 	describe('Summarize Signals', () => {
-		it.todo('Groups entry & exit signals together if signal array length is even')
+		it('Throws if array length is uneven and there is no signal for open positions', () => {
+			expect.assertions(1)
+
+			const s = new Strategy({ initialContext: null })
+			const signals = [{ type: 'enter' }, { type: 'exit' }, { type: 'enter' }]
+
+			try {
+				s.summarizeSignals({ signals, priceData: [], closeOpenPosition: null })
+			} catch (err) {
+				expect(err.message).toBe('No exit signal for open position provided')
+			}
+		})
+
+		it('Throws if the last signal is to enter', () => {
+			expect.assertions(1)
+
+			const s = new Strategy({ initialContext: null })
+			const signals = [{ type: 'enter' }, { type: 'enter' }]
+
+			try {
+				s.summarizeSignals({ signals, priceData: [], closeOpenPosition: null })
+			} catch (err) {
+				expect(err.message).toBe('No exit signal for open position provided')
+			}
+		})
+
+		it.todo('Groups entry & exit signals')
 		it.todo('Calls to extract the price data between entry and exit')
-		it.todo('Throws if array length is uneven')
 		it.todo('Excludes last trade if openPostionPolicy is "exclude"')
 		it.todo('Creates Trade instance with entry, exit and pricedata')
 		it.todo('Return array of Trades')
+	})
+
+	describe('Group signals', () => {
+		it('Groups signals in arrays of 2', () => {
+			const s = new Strategy({ initialContext: null })
+			const signals = [{ type: 'enter' }, { type: 'exit' }, { type: 'enter' }, { type: 'exit' }]
+
+			expect(s.groupSignals(signals)).toEqual([
+				[{ type: 'enter' }, { type: 'exit' }],
+				[{ type: 'enter' }, { type: 'exit' }]
+			])
+		})
+
+		it('Validates that each signal group has both entry and exit', () => {
+			const s = new Strategy({ initialContext: null })
+			const signals = [{ type: 'enter' }, { type: 'exit' }, { type: 'enter' }, { type: 'enter' }]
+
+			try {
+				expect(s.groupSignals(signals))
+			} catch (err) {
+				expect(err.message).toBe('Invalid sequence or number of signals')
+			}
+		})
+
+		it('Validates that each signal group is actually a group', () => {
+			const s = new Strategy({ initialContext: null })
+			const signals = [{ type: 'enter' }, { type: 'exit' }, { type: 'enter' }]
+
+			try {
+				expect(s.groupSignals(signals))
+			} catch (err) {
+				expect(err.message).toBe('Invalid sequence or number of signals')
+			}
+		})
 	})
 })
