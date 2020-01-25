@@ -90,7 +90,10 @@ export default class Strategy {
 	 *
 	 * This enables both excluding of the open positions as well as calculating the open
 	 * profit/loss for testing purposes. Will probably become handy when dealing with strategies
-	 * that has very long-running positions.
+	 * that has very long-running positions. Note that if the `openPositionPolicy` is set to 'conservative'
+	 * the signal price is set to the "guaranteed" exit compared to when it it set to 'optimistic'
+	 * the signal price is set to the last close.
+	 *
 	 * @param {Object} params
 	 * @param {Array<Object>} params.signals All the signals generated in the test
 	 * @param {Object} params.currentBar the last bar to add data to the signal
