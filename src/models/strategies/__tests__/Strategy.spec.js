@@ -1,4 +1,6 @@
 import Strategy from '../Strategy'
+import Signal from '../../Signal'
+jest.mock('../../Signal')
 
 describe('Strategy class', () => {
 	it('Has a working constructor', () => {
@@ -41,6 +43,8 @@ describe('Strategy class', () => {
 		it('Checks for signal every bar', () => {
 			const s = new Strategy()
 
+			s.handleOpenPositions = jest.fn().mockReturnValue(null)
+
 			s.processBar = jest.fn().mockReturnValue({ signal: null, context: null })
 
 			s.extractData = jest
@@ -57,6 +61,8 @@ describe('Strategy class', () => {
 
 		it('Updates context every bar', () => {
 			const s = new Strategy({ initialContext: null })
+
+			s.handleOpenPositions = jest.fn().mockReturnValue(null)
 
 			s.processBar = jest
 				.fn()
@@ -87,6 +93,8 @@ describe('Strategy class', () => {
 
 		it('Checks for pending signals on last bar', () => {
 			const s = new Strategy({ initialContext: null })
+
+			s.handleOpenPositions = jest.fn().mockReturnValue(null)
 
 			s.processBar = jest
 				.fn()
@@ -126,6 +134,8 @@ describe('Strategy class', () => {
 		it('Returns historical context', () => {
 			const s = new Strategy({ initialContext: null })
 
+			s.handleOpenPositions = jest.fn().mockReturnValue(null)
+
 			s.processBar = jest
 				.fn()
 				.mockReturnValueOnce({ signal: null, context: { call: 'first' } })
@@ -156,6 +166,8 @@ describe('Strategy class', () => {
 
 		it('Does not add null signals', () => {
 			const s = new Strategy({ initialContext: null })
+
+			s.handleOpenPositions = jest.fn().mockReturnValue(null)
 
 			s.processBar = jest
 				.fn()
@@ -206,17 +218,234 @@ describe('Strategy class', () => {
 			expect(signals).toEqual([{ type: 'Enter' }, { type: 'Exit' }])
 		})
 
-		it.todo('Generates exit signal for open position if signal array length is odd')
-		it.todo('Adds data about open profit if position open on test end')
-		it.todo('Throws if signals length is odd and last signal is to exit')
+		it('calls to handle open positions', () => {
+			const s = new Strategy({ initialContext: null })
+			s.handleOpenPositions = jest.fn().mockReturnValue(null)
+			s.processBar = jest
+				.fn()
+				.mockReturnValueOnce({ signal: null, context: { call: 'first' } })
+				.mockReturnValueOnce({ signal: { type: 'Enter' }, context: { call: 'second' } })
+				.mockReturnValueOnce({ signal: { type: 'Exit' }, context: { call: 'third' } })
+				.mockReturnValueOnce({ signal: null, context: { call: 'fourth' } })
+
+			s.extractData = jest
+				.fn()
+				.mockReturnValue([
+					{ bar: 'first' },
+					{ bar: 'second' },
+					{ bar: 'third' },
+					{ bar: 'fourth' }
+				])
+
+			const mockStock = { priceData: ['Array of price data'] }
+			const endDate = new Date('1995-12-17T03:24:00').toISOString()
+
+			s.test({ stock: mockStock, endDate })
+
+			expect(s.handleOpenPositions).toHaveBeenCalledTimes(1)
+			expect(s.handleOpenPositions.mock.calls[0][0]).toEqual({
+				context: { call: 'third' },
+				currentBar: { bar: 'fourth' },
+				signals: [{ type: 'Enter' }, { type: 'Exit' }],
+				stock: {}
+			})
+		})
+
+		it.todo('Adds information about open trade')
 
 		it.todo('Checks for identical tests before running')
+	})
+
+	describe('Handle open positions', () => {
+		it('Generates exit signal for open position if signal array length is odd and last signal is to enter', () => {
+			const s = new Strategy({ initialContext: null })
+
+			const openPositionPolicy = 'conservative'
+			const signals = [{ type: 'enter' }]
+			const stock = { name: 'SKF AB' }
+			const currentBar = {
+				date: new Date('2019-12-13'),
+				open: 25,
+				high: 29,
+				low: 21,
+				close: 25
+			}
+			const context = { triggerPrice: 20 }
+
+			const resp = s.handleOpenPositions({
+				signals,
+				context,
+				currentBar,
+				stock,
+				openPositionPolicy
+			})
+
+			expect(resp instanceof Signal).toBe(true)
+		})
+
+		it('Throws if signals length is odd and last signal is to exit', () => {
+			expect.assertions(1)
+
+			const s = new Strategy({ initialContext: null })
+
+			const openPositionPolicy = 'conservative'
+			const signals = [{ type: 'exit' }]
+			const stock = { name: 'SKF AB' }
+			const currentBar = {
+				date: new Date('2019-12-13'),
+				open: 25,
+				high: 29,
+				low: 21,
+				close: 25
+			}
+			const context = { triggerPrice: 20 }
+
+			try {
+				const resp = s.handleOpenPositions({
+					signals,
+					context,
+					currentBar,
+					stock,
+					openPositionPolicy
+				})
+			} catch (err) {
+				expect(err.message).toBe(
+					'Logic error found. Uneven length on signal array and last signal was to exit'
+				)
+			}
+		})
+
+		it('Returns null if no open position detected', () => {
+			const s = new Strategy({ initialContext: null })
+
+			const openPositionPolicy = 'conservative'
+			const signals = [{ type: 'enter' }, { type: 'exit' }]
+			const stock = { name: 'SKF AB' }
+			const currentBar = {
+				date: new Date('2019-12-13'),
+				open: 25,
+				high: 29,
+				low: 21,
+				close: 25
+			}
+			const context = { triggerPrice: 20 }
+
+			const resp = s.handleOpenPositions({
+				signals,
+				context,
+				currentBar,
+				stock,
+				openPositionPolicy
+			})
+
+			expect(resp).toBe(null)
+		})
+
+		it('Generates signal based on trigger price if openPositionPolicy is "conservative"', () => {
+			const s = new Strategy({ initialContext: null })
+
+			const openPositionPolicy = 'conservative'
+			const signals = [{ type: 'enter' }]
+			const stock = { name: 'SKF AB' }
+			const currentBar = {
+				date: new Date('2019-12-13'),
+				open: 25,
+				high: 29,
+				low: 21,
+				close: 25
+			}
+			const context = { triggerPrice: 20 }
+
+			const resp = s.handleOpenPositions({
+				signals,
+				context,
+				currentBar,
+				stock,
+				openPositionPolicy
+			})
+
+			expect(resp instanceof Signal).toBe(true)
+			expect(Signal).toHaveBeenCalledWith({
+				action: 'sell',
+				date: new Date('2019-12-13T00:00:00.000Z'),
+				price: 20,
+				stock,
+				type: 'exit'
+			})
+		})
+
+		it('Generates signal based on trigger price if openPositionPolicy is "exclude"', () => {
+			const s = new Strategy({ initialContext: null })
+
+			const openPositionPolicy = 'exclude'
+			const signals = [{ type: 'enter' }]
+			const stock = { name: 'SKF AB' }
+			const currentBar = {
+				date: new Date('2019-12-13'),
+				open: 25,
+				high: 29,
+				low: 21,
+				close: 25
+			}
+			const context = { triggerPrice: 20 }
+
+			const resp = s.handleOpenPositions({
+				signals,
+				context,
+				currentBar,
+				stock,
+				openPositionPolicy
+			})
+
+			expect(resp instanceof Signal).toBe(true)
+			expect(Signal).toHaveBeenCalledWith({
+				action: 'sell',
+				date: new Date('2019-12-13T00:00:00.000Z'),
+				price: 20,
+				stock,
+				type: 'exit'
+			})
+		})
+
+		it('Generates signal based on current price if openPositionPolicy is "optimistic"', () => {
+			const s = new Strategy({ initialContext: null })
+
+			const openPositionPolicy = 'optimistic'
+			const signals = [{ type: 'enter' }]
+			const stock = { name: 'SKF AB' }
+			const currentBar = {
+				date: new Date('2019-12-13'),
+				open: 25,
+				high: 29,
+				low: 21,
+				close: 25
+			}
+			const context = { triggerPrice: 20 }
+
+			const resp = s.handleOpenPositions({
+				signals,
+				context,
+				currentBar,
+				stock,
+				openPositionPolicy
+			})
+
+			expect(resp instanceof Signal).toBe(true)
+			expect(Signal).toHaveBeenCalledWith({
+				action: 'sell',
+				date: new Date('2019-12-13T00:00:00.000Z'),
+				price: 25,
+				stock,
+				type: 'exit'
+			})
+		})
 	})
 
 	describe('Summarize Signals', () => {
 		it.todo('Groups entry & exit signals together if signal array length is even')
 		it.todo('Calls to extract the price data between entry and exit')
 		it.todo('Throws if array length is uneven')
+		it.todo('Excludes last trade if openPostionPolicy is "exclude"')
 		it.todo('Creates Trade instance with entry, exit and pricedata')
 		it.todo('Return array of Trades')
 	})

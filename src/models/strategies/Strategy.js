@@ -1,13 +1,24 @@
+import _Signal from '../Signal'
+
 export default class Strategy {
-	constructor({ strategyName = 'flipper', initialContext, signalFunction } = {}) {
+	constructor({
+		strategyName = 'flipper',
+		initialContext,
+		signalFunction,
+		openPositionPolicy = 'conservative',
+		Signal = _Signal
+	} = {}) {
+		this.Signal = Signal
 		this.context = initialContext
 		this.strategyName = strategyName
+		this.openPositionPolicy = openPositionPolicy
 
 		if (signalFunction) {
 			this.processBar = signalFunction
 		}
 	}
 
+	// TODO Make async to avoid blocking?
 	test({ stock, startDate, endDate, initialContext = this.context } = {}) {
 		const { priceData, ...stockSummary } = stock
 
@@ -49,22 +60,12 @@ export default class Strategy {
 							aggregate.pendingSignal = pendingSignal
 						}
 
-						// Check for open positions:
-						if (
-							aggregate.signals.length % 2 === 1 &&
-							aggregate.signals[aggregate.signals.length - 1].type === 'enter'
-						) {
-							// Open position
-							console.log('Open')
-						} else if (
-							aggregate.signals.length % 2 === 1 &&
-							aggregate.signals[aggregate.signals.length - 1].type === 'exit'
-						) {
-							// Logic error somewhere :(
-							throw new Error(
-								'Logic error found. Uneven length on signal array and last signal was to exit'
-							)
-						}
+						const closeOpenPosition = this.handleOpenPositions({
+							signals: aggregate.signals,
+							currentBar,
+							context: aggregate.context,
+							stock: stockSummary
+						})
 					}
 				}
 
@@ -84,12 +85,79 @@ export default class Strategy {
 		return { signals, contextHistory, context, pendingSignal }
 	}
 
+	/**
+	 * Generates an exit signal if there is any open positions at the end of the test.
+	 *
+	 * This enables both excluding of the open positions as well as calculating the open
+	 * profit/loss for testing purposes. Will probably become handy when dealing with strategies
+	 * that has very long-running positions.
+	 * @param {Object} params
+	 * @param {Array<Object>} params.signals All the signals generated in the test
+	 * @param {Object} params.currentBar the last bar to add data to the signal
+	 * @param {Object} params.context The current context from the last bar
+	 * @param {Object} params.stock The stock being tested
+	 * @param {String} params.openPositionPolicy Decides what the price in the exit signal should be based on.
+	 * @param {Object} deps
+	 * @param {Signal} deps.Signal The Signal class
+	 * @returns {Signal | null} The signal if there is any open positions, else null.
+	 */
+	handleOpenPositions(
+		{ signals, currentBar, context, stock, openPositionPolicy = this.openPositionPolicy },
+		{ Signal = this.Signal } = {}
+	) {
+		let closeOpenPosition = null
+
+		// Odd number of signals is a tell of open position:
+		const isSignalsLengthOdd = signals.length % 2 === 1
+
+		// The last order type is also a tell of open positions:
+		const isLastSignalEnter = signals[signals.length - 1].type === 'enter'
+
+		// Check for open positions:
+		if (isSignalsLengthOdd && isLastSignalEnter) {
+			// There is an open position
+
+			if (openPositionPolicy === 'conservative' || openPositionPolicy === 'exclude') {
+				/*
+				If the openPositionPolicy the open p/l is calculated on where the "guaranteed" exit will be,
+				ie. the trailing trigger price for the exit
+				*/
+				closeOpenPosition = new Signal({
+					stock,
+					action: 'sell',
+					type: 'exit',
+					price: context.triggerPrice,
+					date: currentBar.date
+				})
+			} else if (openPositionPolicy === 'optimistic') {
+				/*
+				If, on the other hand, the policy is optimistic the open p/l will be calculated as
+				the latest close.
+				*/
+				closeOpenPosition = new Signal({
+					stock,
+					action: 'sell',
+					type: 'exit',
+					price: currentBar.close,
+					date: currentBar.date
+				})
+			}
+		} else if (isSignalsLengthOdd && !isLastSignalEnter) {
+			// ! Logic error somewhere :(
+			throw new Error(
+				'Logic error found. Uneven length on signal array and last signal was to exit'
+			)
+		}
+
+		return closeOpenPosition
+	}
+
 	summarizeSignals({ signals, priceData }) {
 		const numberOfSignals = signals.length
 
 		if (numberOfSignals > 0) {
 			const trades = []
-
+			// https://medium.com/@Dragonza/four-ways-to-chunk-an-array-e19c889eac4
 			return trades
 		} else {
 			return []
