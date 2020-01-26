@@ -607,8 +607,153 @@ describe('Strategy class', () => {
 	})
 
 	describe('extractData', () => {
-		it.todo('Should return start + end index')
-		it.todo('Should return 0 if no start provided')
-		it.todo('Should return array length - 1 if no end date provided')
+		it('Should return start + end index', () => {
+			const s = new Strategy({ initialContext: null })
+
+			s.searchForDate = jest
+				.fn()
+				.mockReturnValueOnce(1)
+				.mockReturnValueOnce(99)
+
+			const priceData = new Array(100).fill({
+				date: 'this is a date',
+				open: 1,
+				high: 2,
+				low: 0.1,
+				close: 1
+			})
+
+			const startDate = new Date('2019-12-14')
+			const endDate = new Date('2019-12-24')
+
+			expect(
+				s.extractData({
+					priceData,
+					startDate,
+					endDate
+				})
+			).toEqual({ startIndex: 1, endIndex: 99 })
+
+			expect(s.searchForDate).toHaveBeenCalledTimes(2)
+			expect(s.searchForDate.mock.calls[0][0].priceData).toEqual(priceData)
+			expect(s.searchForDate.mock.calls[0][0].date).toEqual(startDate)
+
+			expect(s.searchForDate.mock.calls[1][0].priceData).toEqual(priceData)
+			expect(s.searchForDate.mock.calls[1][0].date).toEqual(endDate)
+		})
+
+		it('Sets startIndex to 0 if no start provided', () => {
+			const s = new Strategy({ initialContext: null })
+
+			s.searchForDate = jest.fn().mockReturnValueOnce(99)
+
+			const priceData = new Array(100).fill({
+				date: 'this is a date',
+				open: 1,
+				high: 2,
+				low: 0.1,
+				close: 1
+			})
+
+			const startDate = null
+			const endDate = new Date('2019-12-24')
+
+			expect(
+				s.extractData({
+					priceData,
+					startDate,
+					endDate
+				})
+			).toEqual({ startIndex: 0, endIndex: 99 })
+		})
+
+		it('Sets endIndex to array length if no end provided', () => {
+			const s = new Strategy({ initialContext: null })
+
+			s.searchForDate = jest.fn().mockReturnValueOnce(1)
+
+			const priceData = new Array(100).fill({
+				date: 'this is a date',
+				open: 1,
+				high: 2,
+				low: 0.1,
+				close: 1
+			})
+
+			const startDate = new Date('2019-12-24')
+			const endDate = null
+
+			expect(
+				s.extractData({
+					priceData,
+					startDate,
+					endDate
+				})
+			).toEqual({ startIndex: 1, endIndex: 100 })
+		})
+	})
+
+	describe('Search for date', () => {
+		it('Throws if date is less than the first date in data', () => {
+			expect.assertions(1)
+
+			const s = new Strategy({ initialContext: null })
+
+			// Generate array with the date set to the index + 2
+			const priceData = new Array(100).fill(0).map((_, i) => ({ date: new Date(i + 2) }))
+
+			try {
+				s.searchForDate({ priceData, date: new Date(1) })
+			} catch (err) {
+				expect(err.message).toBe('Date is not within provided interval')
+			}
+		})
+
+		it('Throws if date is greater than the last date in data', () => {
+			expect.assertions(1)
+
+			const s = new Strategy({ initialContext: null })
+
+			// Generate array with the date set to the index + 2
+			const priceData = new Array(100).fill(0).map((_, i) => ({ date: new Date(i + 2) }))
+
+			try {
+				s.searchForDate({ priceData, date: new Date(200) })
+			} catch (err) {
+				expect(err.message).toBe('Date is not within provided interval')
+			}
+		})
+
+		it.each([[1000, 99, 98], [25, 24, 23], [1, 1, 0], [2, 2, 1]])(
+			'Returns the index of where the date is',
+			(arrLength, target, expectedIndex) => {
+				const s = new Strategy({ initialContext: null })
+
+				// Generate array with the date set to the index + 1
+				const priceData = new Array(arrLength)
+					.fill(0)
+					.map((_, i) => ({ date: new Date(i + 1) }))
+
+				const resp = s.searchForDate({ priceData, date: new Date(target) })
+
+				expect(resp).toBe(expectedIndex)
+			}
+		)
+
+		it.each([[100, 51, 26], [250, 127, 64], [100, 37, 19], [200, 199, 100]])(
+			'Returns the first value after target if the value is skipped',
+			(arrLength, target, expectedIndex) => {
+				const s = new Strategy({ initialContext: null })
+
+				// Generate array with the date set to the index + 1
+				const priceData = new Array(arrLength)
+					.fill(0)
+					.map((_, i) => ({ date: new Date(i * 2) }))
+
+				const resp = s.searchForDate({ priceData, date: new Date(target) })
+
+				expect(resp).toBe(expectedIndex)
+			}
+		)
 	})
 })
