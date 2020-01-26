@@ -178,7 +178,6 @@ export default class Strategy {
 			const groupedSignalsWithPriceData = this.assignPriceData({ groupedSignals, priceData })
 
 			const trades = []
-			// https://medium.com/@Dragonza/four-ways-to-chunk-an-array-e19c889eac4
 			return trades
 		} else {
 			return []
@@ -252,6 +251,14 @@ export default class Strategy {
 		throw new Error('No signal function has been provided')
 	}
 
+	/**
+	 * Gets the start and end index of the data between the start- and endDate.
+	 * @param {Object} params
+	 * @param {Array<Object>} params.priceData Array of price data to grab data from
+	 * @param {Date} params.startDate The first date to include
+	 * @param {Date} params.endDate The last date to include
+	 * @returns {Object} with the `startIndex` and `endIndex` props.
+	 */
 	extractData({ priceData, startDate, endDate }) {
 		const output = { startIndex: 0, endIndex: priceData.length }
 
