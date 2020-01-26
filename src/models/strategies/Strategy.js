@@ -247,6 +247,10 @@ export default class Strategy {
 		return output
 	}
 
+	/**
+	 * This is the main function to run the tests but since this is
+	 * a class meant to be extended each strategy has to override this.
+	 */
 	processBar() {
 		throw new Error('No signal function has been provided')
 	}
