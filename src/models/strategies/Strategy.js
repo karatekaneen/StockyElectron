@@ -102,7 +102,7 @@ export default class Strategy {
 	 * the signal price is set to the last close.
 	 *
 	 * @param {Object} params
-	 * @param {Array<Object>} params.signals All the signals generated in the test
+	 * @param {Array<Signal>} params.signals All the signals generated in the test
 	 * @param {Object} params.currentBar the last bar to add data to the signal
 	 * @param {Object} params.context The current context from the last bar
 	 * @param {Object} params.stock The stock being tested
@@ -174,6 +174,9 @@ export default class Strategy {
 				throw new Error('No exit signal for open position provided')
 			}
 
+			const groupedSignals = this.groupSignals(signals)
+			const groupedSignalsWithPriceData = this.assignPriceData({ groupedSignals, priceData })
+
 			const trades = []
 			// https://medium.com/@Dragonza/four-ways-to-chunk-an-array-e19c889eac4
 			return trades
@@ -182,6 +185,42 @@ export default class Strategy {
 		}
 	}
 
+	/**
+	 * Takes a nested array of signals (entry and exit) and all of the pricedata and attaches all the price
+	 * data between entry and exit to the signals. It is returned as an array of objects instead of nested array.
+	 * @param {Object} params
+	 * @param {Array<Array<Signal>>} params.groupedSignals Grouped signals with entry and exit
+	 * @param {Array<Object>} params.priceData The pricedata from the stock where the signals were generated.
+	 * @returns {Array<Object} Outputs object with `entrySignal`, `exitSignal` and `tradeData` which is the pricedata between entry and exit
+	 */
+	assignPriceData({ groupedSignals, priceData }) {
+		let priceClone = [...priceData]
+
+		const signalsWithPriceData = groupedSignals.map(([entrySignal, exitSignal]) => {
+			const { startIndex, endIndex } = this.extractData({
+				priceData: priceClone,
+				startDate: entrySignal.date,
+				endDate: exitSignal.date
+			})
+
+			// Get all the data that was produced during the trade
+			const tradeData = priceClone.slice(startIndex, endIndex)
+
+			// Update the data array to have to search less data next time
+			priceClone = priceClone.slice(endIndex)
+
+			return { entrySignal, exitSignal, tradeData }
+		})
+
+		return signalsWithPriceData
+	}
+
+	/**
+	 * Groups signals 2 by 2, with entry and exit to later on be created as Trades
+	 * @param {Array<Signal>} signals The signals generated in the test
+	 * @param {Number} groupSize How many signals it should be in every group. Defaults to 2 because entry and exit
+	 * @returns {Array<Array<Signal>>} Nested arrays with signals in groups of 2 (by default)
+	 */
 	groupSignals(signals, groupSize = 2) {
 		let index = 0
 		const output = []

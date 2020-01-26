@@ -195,6 +195,9 @@ describe('Strategy class', () => {
 		it('Adds signals to array', () => {
 			const s = new Strategy({ initialContext: null })
 
+			s.groupSignals = jest.fn()
+			s.assignPriceData = jest.fn()
+
 			s.processBar = jest
 				.fn()
 				.mockReturnValueOnce({ signal: null, context: { call: 'first' } })
@@ -221,6 +224,10 @@ describe('Strategy class', () => {
 		it('calls to handle open positions', () => {
 			const s = new Strategy({ initialContext: null })
 			s.handleOpenPositions = jest.fn().mockReturnValue(null)
+
+			s.groupSignals = jest.fn()
+			s.assignPriceData = jest.fn()
+
 			s.processBar = jest
 				.fn()
 				.mockReturnValueOnce({ signal: null, context: { call: 'first' } })
@@ -468,7 +475,21 @@ describe('Strategy class', () => {
 			}
 		})
 
-		it.todo('Groups entry & exit signals')
+		it('Groups entry & exit signals', () => {
+			const s = new Strategy({ initialContext: null })
+			const signals = [{ type: 'enter' }, { type: 'exit' }, { type: 'enter' }, { type: 'exit' }]
+
+			s.groupSignals = jest
+				.fn()
+				.mockReturnValue([
+					[{ type: 'enter' }, { type: 'exit' }],
+					[{ type: 'enter' }, { type: 'exit' }]
+				])
+
+			s.summarizeSignals({ signals, priceData: [], closeOpenPosition: null })
+			expect(s.groupSignals).toHaveBeenCalledWith(signals)
+		})
+
 		it.todo('Calls to extract the price data between entry and exit')
 		it.todo('Excludes last trade if openPostionPolicy is "exclude"')
 		it.todo('Creates Trade instance with entry, exit and pricedata')
@@ -507,5 +528,87 @@ describe('Strategy class', () => {
 				expect(err.message).toBe('Invalid sequence or number of signals')
 			}
 		})
+	})
+
+	describe('Assign Pricedata', () => {
+		it('Should assign the data between the indexes to the signal object', () => {
+			const s = new Strategy({ initialContext: null })
+
+			s.extractData = jest
+				.fn()
+				.mockReturnValueOnce({ startIndex: 5, endIndex: 20 })
+				.mockReturnValueOnce({ startIndex: 1, endIndex: 4 })
+				.mockReturnValueOnce({ startIndex: 2, endIndex: 10 })
+
+			const mockSignals = [
+				[{ date: new Date('2019-12-13') }, { date: new Date('2019-12-14') }],
+				[{ date: new Date('2019-12-15') }, { date: new Date('2019-12-16') }],
+				[{ date: new Date('2019-12-17') }, { date: new Date('2019-12-18') }]
+			]
+
+			const mockPriceData = new Array(100).fill(0).map((x, i) => ({ index: i, value: 'hej' }))
+
+			const [group1, group2, group3] = s.assignPriceData({
+				groupedSignals: mockSignals,
+				priceData: mockPriceData
+			})
+
+			expect(group1.entrySignal).toEqual({ date: new Date('2019-12-13T00:00:00.000Z') })
+			expect(group1.tradeData[0].index).toBe(5)
+			expect(group1.tradeData[group1.tradeData.length - 1].index).toBe(19)
+			expect(group1.tradeData.length).toBe(15)
+			expect(group1.exitSignal).toEqual({ date: new Date('2019-12-14T00:00:00.000Z') })
+
+			expect(group2.entrySignal).toEqual({ date: new Date('2019-12-15T00:00:00.000Z') })
+			expect(group2.tradeData[0].index).toBe(21)
+			expect(group2.tradeData[group2.tradeData.length - 1].index).toBe(23)
+			expect(group2.tradeData.length).toBe(3)
+			expect(group2.exitSignal).toEqual({ date: new Date('2019-12-16T00:00:00.000Z') })
+
+			expect(group3.entrySignal).toEqual({ date: new Date('2019-12-17T00:00:00.000Z') })
+			expect(group3.tradeData[0].index).toBe(26)
+			expect(group3.tradeData[group3.tradeData.length - 1].index).toBe(33)
+			expect(group3.tradeData.length).toBe(8)
+			expect(group3.exitSignal).toEqual({ date: new Date('2019-12-18T00:00:00.000Z') })
+		})
+
+		it('Should only use the data after the previous exit signal in next call', () => {
+			const s = new Strategy({ initialContext: null })
+
+			s.extractData = jest
+				.fn()
+				.mockReturnValueOnce({ startIndex: 5, endIndex: 20 })
+				.mockReturnValueOnce({ startIndex: 1, endIndex: 4 })
+				.mockReturnValueOnce({ startIndex: 2, endIndex: 10 })
+
+			const mockSignals = [
+				[{ date: new Date('2019-12-13') }, { date: new Date('2019-12-14') }],
+				[{ date: new Date('2019-12-15') }, { date: new Date('2019-12-16') }],
+				[{ date: new Date('2019-12-17') }, { date: new Date('2019-12-18') }]
+			]
+
+			const mockPriceData = new Array(100).fill(0).map((x, i) => ({ index: i, value: 'hej' }))
+
+			s.assignPriceData({
+				groupedSignals: mockSignals,
+				priceData: mockPriceData
+			})
+
+			expect(s.extractData).toHaveBeenCalledTimes(3)
+
+			const call1 = s.extractData.mock.calls[0][0].priceData.length
+			const call2 = s.extractData.mock.calls[1][0].priceData.length
+			const call3 = s.extractData.mock.calls[2][0].priceData.length
+
+			expect(call1).toBe(100)
+			expect(call2).toBe(80)
+			expect(call3).toBe(76)
+		})
+	})
+
+	describe('extractData', () => {
+		it.todo('Should return start + end index')
+		it.todo('Should return 0 if no start provided')
+		it.todo('Should return array length - 1 if no end date provided')
 	})
 })
