@@ -174,7 +174,7 @@ export default class Strategy {
 				throw new Error('No exit signal for open position provided')
 			}
 
-			const groupedSignals = this.groupSignals(signals)
+			const groupedSignals = this.groupSignals({ signals, closeOpenPosition })
 			const groupedSignalsWithPriceData = this.assignPriceData({ groupedSignals, priceData })
 
 			const trades = []
@@ -216,17 +216,25 @@ export default class Strategy {
 
 	/**
 	 * Groups signals 2 by 2, with entry and exit to later on be created as Trades
-	 * @param {Array<Signal>} signals The signals generated in the test
-	 * @param {Number} groupSize How many signals it should be in every group. Defaults to 2 because entry and exit
+	 * @param {Object} params parameters
+	 * @param {Array<Signal>} params.signals The signals generated in the test
+	 * @param {Signal|null} params.closeOpenPosition The signal to close open positions if there are any
+	 * @param {Number} params.groupSize How many signals it should be in every group. Defaults to 2 because entry and exit
 	 * @returns {Array<Array<Signal>>} Nested arrays with signals in groups of 2 (by default)
 	 */
-	groupSignals(signals, groupSize = 2) {
+	groupSignals({ signals, closeOpenPosition, groupSize = 2 }) {
+		const signalList = [...signals]
+
+		if (closeOpenPosition) {
+			signalList.push(closeOpenPosition)
+		}
+
 		let index = 0
 		const output = []
 
 		// Split up the array into smaller arrays of 2
-		while (index < signals.length) {
-			output.push(signals.slice(index, groupSize + index))
+		while (index < signalList.length) {
+			output.push(signalList.slice(index, groupSize + index))
 			index += groupSize
 		}
 

@@ -487,10 +487,31 @@ describe('Strategy class', () => {
 				])
 
 			s.summarizeSignals({ signals, priceData: [], closeOpenPosition: null })
-			expect(s.groupSignals).toHaveBeenCalledWith(signals)
+			expect(s.groupSignals).toHaveBeenCalledWith({ signals, closeOpenPosition: null })
 		})
 
-		it.todo('Calls to extract the price data between entry and exit')
+		it('Calls to extract the price data between entry and exit', () => {
+			const s = new Strategy({ initialContext: null })
+			const signals = [{ type: 'enter' }, { type: 'exit' }, { type: 'enter' }, { type: 'exit' }]
+
+			s.groupSignals = jest
+				.fn()
+				.mockReturnValue([
+					[{ type: 'enter' }, { type: 'exit' }],
+					[{ type: 'enter' }, { type: 'exit' }]
+				])
+
+			s.assignPriceData = jest.fn()
+
+			s.summarizeSignals({ signals, priceData: [], closeOpenPosition: null })
+			expect(s.assignPriceData).toHaveBeenCalledWith({
+				groupedSignals: [
+					[{ type: 'enter' }, { type: 'exit' }],
+					[{ type: 'enter' }, { type: 'exit' }]
+				],
+				priceData: []
+			})
+		})
 		it.todo('Excludes last trade if openPostionPolicy is "exclude"')
 		it.todo('Creates Trade instance with entry, exit and pricedata')
 		it.todo('Return array of Trades')
@@ -501,7 +522,18 @@ describe('Strategy class', () => {
 			const s = new Strategy({ initialContext: null })
 			const signals = [{ type: 'enter' }, { type: 'exit' }, { type: 'enter' }, { type: 'exit' }]
 
-			expect(s.groupSignals(signals)).toEqual([
+			expect(s.groupSignals({ signals })).toEqual([
+				[{ type: 'enter' }, { type: 'exit' }],
+				[{ type: 'enter' }, { type: 'exit' }]
+			])
+		})
+
+		it('Adds the signal to close open positions', () => {
+			const s = new Strategy({ initialContext: null })
+			const signals = [{ type: 'enter' }, { type: 'exit' }, { type: 'enter' }]
+			const closeOpenPosition = { type: 'exit' }
+
+			expect(s.groupSignals({ signals, closeOpenPosition })).toEqual([
 				[{ type: 'enter' }, { type: 'exit' }],
 				[{ type: 'enter' }, { type: 'exit' }]
 			])
@@ -512,7 +544,7 @@ describe('Strategy class', () => {
 			const signals = [{ type: 'enter' }, { type: 'exit' }, { type: 'enter' }, { type: 'enter' }]
 
 			try {
-				expect(s.groupSignals(signals))
+				expect(s.groupSignals({ signals }))
 			} catch (err) {
 				expect(err.message).toBe('Invalid sequence or number of signals')
 			}
@@ -523,7 +555,7 @@ describe('Strategy class', () => {
 			const signals = [{ type: 'enter' }, { type: 'exit' }, { type: 'enter' }]
 
 			try {
-				expect(s.groupSignals(signals))
+				expect(s.groupSignals({ signals }))
 			} catch (err) {
 				expect(err.message).toBe('Invalid sequence or number of signals')
 			}
