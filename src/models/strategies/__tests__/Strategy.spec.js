@@ -1,6 +1,12 @@
 import Strategy from '../Strategy'
 import Signal from '../../Signal'
+import Trade from '../../Trade'
 jest.mock('../../Signal')
+jest.mock('../../Trade')
+
+beforeEach(() => {
+	jest.clearAllMocks()
+})
 
 describe('Strategy class', () => {
 	it('Has a working constructor', () => {
@@ -196,7 +202,7 @@ describe('Strategy class', () => {
 			const s = new Strategy({ initialContext: null })
 
 			s.groupSignals = jest.fn()
-			s.assignPriceData = jest.fn()
+			s.assignPriceData = jest.fn().mockReturnValue([])
 
 			s.processBar = jest
 				.fn()
@@ -226,7 +232,7 @@ describe('Strategy class', () => {
 			s.handleOpenPositions = jest.fn().mockReturnValue(null)
 
 			s.groupSignals = jest.fn()
-			s.assignPriceData = jest.fn()
+			s.assignPriceData = jest.fn().mockReturnValue([])
 
 			s.processBar = jest
 				.fn()
@@ -501,7 +507,7 @@ describe('Strategy class', () => {
 					[{ type: 'enter' }, { type: 'exit' }]
 				])
 
-			s.assignPriceData = jest.fn()
+			s.assignPriceData = jest.fn().mockReturnValue([])
 
 			s.summarizeSignals({ signals, priceData: [], closeOpenPosition: null })
 			expect(s.assignPriceData).toHaveBeenCalledWith({
@@ -512,9 +518,97 @@ describe('Strategy class', () => {
 				priceData: []
 			})
 		})
-		it.todo('Excludes last trade if openPostionPolicy is "exclude"')
-		it.todo('Creates Trade instance with entry, exit and pricedata')
-		it.todo('Return array of Trades')
+
+		it('Creates Trade instance with entry, exit and pricedata', () => {
+			const s = new Strategy({ initialContext: null })
+			const signals = [{ type: 'enter' }, { type: 'exit' }, { type: 'enter' }, { type: 'exit' }]
+
+			s.groupSignals = jest.fn()
+
+			const mockResponse = [
+				{
+					entrySignal: { type: 'entry signal' },
+					exitSignal: { type: 'exit signal' },
+					tradeData: ['array', 'of', 'price', 'data']
+				},
+				{
+					entrySignal: { type: 'another entry signal' },
+					exitSignal: { type: 'another exit signal' },
+					tradeData: ['array', 'of', 'price', 'data']
+				}
+			]
+
+			s.assignPriceData = jest.fn().mockReturnValue(mockResponse)
+
+			s.summarizeSignals({ signals, priceData: [], closeOpenPosition: null })
+			expect(Trade).toHaveBeenCalledTimes(2)
+
+			expect(Trade).toHaveBeenCalledWith(mockResponse[0])
+			expect(Trade).toHaveBeenCalledWith(mockResponse[1])
+		})
+
+		it('Return array of Trades', () => {
+			const s = new Strategy({ initialContext: null })
+			const signals = [{ type: 'enter' }, { type: 'exit' }, { type: 'enter' }, { type: 'exit' }]
+
+			s.groupSignals = jest.fn()
+
+			const mockResponse = [
+				{
+					entrySignal: { type: 'entry signal' },
+					exitSignal: { type: 'exit signal' },
+					tradeData: ['array', 'of', 'price', 'data']
+				},
+				{
+					entrySignal: { type: 'another entry signal' },
+					exitSignal: { type: 'another exit signal' },
+					tradeData: ['array', 'of', 'price', 'data']
+				}
+			]
+
+			s.assignPriceData = jest.fn().mockReturnValue(mockResponse)
+
+			const resp = s.summarizeSignals({ signals, priceData: [], closeOpenPosition: null })
+
+			const isAllTradeInstances = resp.every(trade => trade instanceof Trade)
+
+			expect(isAllTradeInstances).toBe(true)
+			expect(resp.length).toBe(2)
+		})
+
+		it('Excludes last trade if openPostionPolicy is "exclude" and there was open position', () => {
+			const s = new Strategy({ initialContext: null })
+			const signals = [{ type: 'enter' }, { type: 'exit' }, { type: 'enter' }, { type: 'exit' }]
+
+			s.groupSignals = jest.fn()
+
+			const mockResponse = [
+				{
+					entrySignal: { type: 'entry signal' },
+					exitSignal: { type: 'exit signal' },
+					tradeData: ['array', 'of', 'price', 'data']
+				},
+				{
+					entrySignal: { type: 'another entry signal' },
+					exitSignal: { type: 'another exit signal' },
+					tradeData: ['array', 'of', 'price', 'data']
+				}
+			]
+
+			s.assignPriceData = jest.fn().mockReturnValue(mockResponse)
+
+			const resp = s.summarizeSignals({
+				signals,
+				priceData: [],
+				closeOpenPosition: { name: 'this is a mock signal' },
+				openPositionPolicy: 'exclude'
+			})
+
+			const isAllTradeInstances = resp.every(trade => trade instanceof Trade)
+
+			expect(isAllTradeInstances).toBe(true)
+			expect(resp.length).toBe(1)
+		})
 	})
 
 	describe('Group signals', () => {

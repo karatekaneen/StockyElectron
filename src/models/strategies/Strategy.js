@@ -1,4 +1,5 @@
 import _Signal from '../Signal'
+import _Trade from '../Trade'
 
 export default class Strategy {
 	constructor({
@@ -6,9 +7,11 @@ export default class Strategy {
 		initialContext,
 		signalFunction,
 		openPositionPolicy = 'conservative',
-		Signal = _Signal
+		Signal = _Signal,
+		Trade = _Trade
 	} = {}) {
 		this.Signal = Signal
+		this.Trade = Trade
 		this.context = initialContext
 		this.strategyName = strategyName
 		this.openPositionPolicy = openPositionPolicy
@@ -162,7 +165,21 @@ export default class Strategy {
 		return closeOpenPosition
 	}
 
-	summarizeSignals({ signals, priceData, closeOpenPosition }) {
+	/**
+	 * Converts all of the raw signals into an array of Trades to be more easily parsable later on.
+	 * @param {Object} params
+	 * @param {Array<Signal>} params.signals All the signals from the test
+	 * @param {Array<Object>} params.priceData All the pricedata for this stock
+	 * @param {Signal|null} params.closeOpenPosition The signal generated to keep track of open profit/loss
+	 * @param {String} params.openPositionPolicy How the open positions should be handled at the end of the test
+	 * @param {Object} deps
+	 * @param {Class} deps.Trade The trade class
+	 * @returns {Array<Trade>} List of trades.
+	 */
+	summarizeSignals(
+		{ signals, priceData, closeOpenPosition, openPositionPolicy = this.openPositionPolicy },
+		{ Trade = this.Trade } = {}
+	) {
 		const numberOfSignals = signals.length
 
 		if (numberOfSignals > 0) {
@@ -174,10 +191,23 @@ export default class Strategy {
 				throw new Error('No exit signal for open position provided')
 			}
 
+			// Group the entries and exits together
 			const groupedSignals = this.groupSignals({ signals, closeOpenPosition })
+
+			// Add the data between entry and exit
 			const groupedSignalsWithPriceData = this.assignPriceData({ groupedSignals, priceData })
 
-			const trades = []
+			// Convert the signal groups to Trade instances
+			const trades = groupedSignalsWithPriceData.map(
+				({ entrySignal, exitSignal, tradeData }) =>
+					new Trade({ entrySignal, exitSignal, tradeData })
+			)
+
+			// If the policy is to exclude open positions from result, pop the last item
+			if (openPositionPolicy === 'exclude' && closeOpenPosition) {
+				trades.pop()
+			}
+
 			return trades
 		} else {
 			return []
