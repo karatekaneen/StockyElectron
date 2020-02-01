@@ -33,13 +33,15 @@ class Trade {
 		 * @param {Date} d2 Date to check
 		 * @returns {Boolean}
 		 */
-		const areDatesEqual = (d1, d2) => d1.getTime() !== d2.getTime()
+		const areDatesEqual = (d1, d2) => {
+			return d1.getTime() === d2.getTime()
+		}
 
 		if (!isSignal(entry) || !isSignal(exit)) {
 			throw new Error('Entry and exit must be Signal instances')
 		} else if (
-			areDatesEqual(entry.date, tradeData[0].date) ||
-			areDatesEqual(exit.date, tradeData[tradeData.length - 1].date)
+			!areDatesEqual(entry.date, tradeData[0].date) ||
+			!areDatesEqual(exit.date, tradeData[tradeData.length - 1].date)
 		) {
 			throw new Error('Invalid date range')
 		}

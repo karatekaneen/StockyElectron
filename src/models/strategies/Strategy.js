@@ -61,10 +61,18 @@ class Strategy {
 		// TODO Make async to avoid blocking?
 		// TODO It may be a good idea to refactor to pass all the data and index instead to allow for more complex calculations etc.
 		// ? Maybe the better way is to add ability to override the default test function
+
 		const { priceData, ...stockSummary } = stock
 		let openTrade = null
 
-		const testData = this.extractData({ priceData, startDate, endDate })
+		// Get the start and end index of the data to be tested
+		const { startIndex, endIndex } = this.extractData({
+			priceData,
+			startDate,
+			endDate
+		})
+
+		const testData = priceData.slice(startIndex, endIndex + 1) // Add 1 to include the last
 
 		// Run the test in a reduce:
 		const {
@@ -250,10 +258,15 @@ class Strategy {
 		const groupedSignalsWithPriceData = this.assignPriceData({ groupedSignals, priceData })
 
 		// Convert the signal groups to Trade instances
-		const trades = groupedSignalsWithPriceData.map(
-			({ entrySignal, exitSignal, tradeData }) =>
-				new Trade({ entrySignal, exitSignal, tradeData })
-		)
+		const trades = groupedSignalsWithPriceData.map(({ entrySignal, exitSignal, tradeData }) => {
+			try {
+				return new Trade({ entry: entrySignal, exit: exitSignal, tradeData })
+			} catch (err) {
+				console.error(err)
+				console.log({ entrySignal, exitSignal, t: tradeData[0] })
+				throw err
+			}
+		})
 
 		// If the policy is to exclude open positions from result, pop the last item
 		if (openPositionPolicy === 'exclude' && closeOpenPosition) {
@@ -282,7 +295,7 @@ class Strategy {
 			})
 
 			// Get all the data that was produced during the trade
-			const tradeData = priceClone.slice(startIndex, endIndex)
+			const tradeData = priceClone.slice(startIndex, endIndex + 1)
 
 			// Update the data array to have to search less data next time
 			priceClone = priceClone.slice(endIndex)
