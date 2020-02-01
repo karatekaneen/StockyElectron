@@ -1,5 +1,8 @@
 import _Signal from './Signal'
 
+/**
+ * Class to calculate and store data about a particular trade.
+ */
 class Trade {
 	/**
 	 * Creates an instance of a Trade
@@ -14,7 +17,22 @@ class Trade {
 	 */
 	constructor({ entry, exit, tradeData, quantity = 1 }, { Signal = _Signal } = {}) {
 		// TODO Add fee calculation class and inject it here
+
+		// Helper methods to validate input
+		/**
+		 * Validates that the input is a Signal instance
+		 * @param {Object} s Hopefully a Signal
+		 * @returns {Boolean}
+		 */
 		const isSignal = s => s instanceof Signal
+
+		/**
+		 * Checks if two dates are equal. It is required that the tradeData starts on the same date
+		 * as the entry signal and ends on the same as the exit signal.
+		 * @param {Date} d1 Date to check
+		 * @param {Date} d2 Date to check
+		 * @returns {Boolean}
+		 */
 		const areDatesEqual = (d1, d2) => d1.getTime() !== d2.getTime()
 
 		if (!isSignal(entry) || !isSignal(exit)) {
