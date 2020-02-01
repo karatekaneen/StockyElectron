@@ -25,6 +25,10 @@ class Signal {
 			// Class fields:
 			// TODO Make private when able to
 			this.stock = stock
+			/**
+			 * The price where the signal was executed
+			 * @type {number}
+			 */
 			this.price = price
 			this.date = date
 			this.action = action.toLowerCase()

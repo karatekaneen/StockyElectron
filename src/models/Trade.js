@@ -1,7 +1,19 @@
 import _Signal from './Signal'
 
 class Trade {
+	/**
+	 * Creates an instance of a Trade
+	 * @param {Object} params
+	 * @param {Signal} params.entry the entry signal
+	 * @param {Signal} params.exit the exit signal
+	 * @param {Array<Object>} params.tradeData The price action between entry and exit
+	 * @param {Number} params.quantity The number of shares
+	 * @param {Object} deps
+	 * @param {Class} deps.Signal
+	 * @todo Add fees
+	 */
 	constructor({ entry, exit, tradeData, quantity = 1 }, { Signal = _Signal } = {}) {
+		// TODO Add fee calculation class and inject it here
 		const isSignal = s => s instanceof Signal
 		const areDatesEqual = (d1, d2) => d1.getTime() !== d2.getTime()
 
@@ -20,14 +32,12 @@ class Trade {
 		this.quantity = quantity
 		this.resultPerStock = this.roundNumber(exit.price - entry.price)
 		this.resultPercent = exit.price / entry.price - 1
-
-		this.setResultInCash()
-		this.setPositionValues()
 	}
 
 	/**
 	 * Returns the performance of the trade in percent while in market.
 	 * @returns {Array<Object>} The pricedata between entry and exit in percent
+	 * @todo Make _performancePercent private when able to.
 	 */
 	get performancePercent() {
 		// TODO Make _performancePercent private when able to.
@@ -45,7 +55,7 @@ class Trade {
 	 * @returns {Array<Object>} The pricedata between entry and exit cash
 	 */
 	get performanceCash() {
-		return (this._performanceCash = this.performancePercent.map(pricePoint => {
+		return this.performancePercent.map(pricePoint => {
 			const output = { ...pricePoint }
 			output.open = this.roundNumber(this.entry.price * output.open * this.quantity)
 			output.high = this.roundNumber(this.entry.price * output.high * this.quantity)
@@ -53,30 +63,31 @@ class Trade {
 			output.close = this.roundNumber(this.entry.price * output.close * this.quantity)
 
 			return output
-		}))
+		})
 	}
 
 	/**
-	 * Sets the initial- and finalValue property to the quantity multiplied with the entry/exit price.
-	 * @returns {Trade} this
+	 * Calculates the initial position value
+	 * @returns {number} Initial value
 	 */
-	setPositionValues() {
-		// ? Should this be a getter instead?
-		this.initialValue = this.roundNumber(this.quantity * this.entry.price)
-		this.finalValue = this.roundNumber(this.quantity * this.exit.price)
-
-		return this
+	get initialValue() {
+		return this.roundNumber(this.quantity * this.entry.price)
 	}
 
 	/**
-	 * Sets the resultInCash property to the quantity multiplied with the result per stock.
-	 * @returns {Trade} this
+	 * Calculates the final position value
+	 * @returns {number} Final value
 	 */
-	setResultInCash() {
-		// ? Should this be a getter instead?
-		this.resultInCash = this.roundNumber(this.quantity * this.resultPerStock)
+	get finalValue() {
+		return this.roundNumber(this.quantity * this.exit.price)
+	}
 
-		return this
+	/**
+	 * Calculates the result in cash based on the result per stock multiplied with the quantity.
+	 * @returns {number} Result in $$$
+	 */
+	get resultInCash() {
+		return this.roundNumber(this.quantity * this.resultPerStock)
 	}
 
 	/**
@@ -106,9 +117,6 @@ class Trade {
 	 */
 	setQuantity(quantity) {
 		this.quantity = quantity
-
-		// Update p/l & Update position values
-		this.setResultInCash().setPositionValues()
 
 		return this
 	}
