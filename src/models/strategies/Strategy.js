@@ -181,37 +181,36 @@ export default class Strategy {
 		{ Trade = this.Trade } = {}
 	) {
 		const numberOfSignals = signals.length
-
-		if (numberOfSignals > 0) {
-			const isOddNumber = numberOfSignals % 2 === 1
-			const lastSignalType = signals[signals.length - 1].type
-
-			// Early indication that something is wrong
-			if ((isOddNumber && !closeOpenPosition) || (!isOddNumber && lastSignalType === 'enter')) {
-				throw new Error('No exit signal for open position provided')
-			}
-
-			// Group the entries and exits together
-			const groupedSignals = this.groupSignals({ signals, closeOpenPosition })
-
-			// Add the data between entry and exit
-			const groupedSignalsWithPriceData = this.assignPriceData({ groupedSignals, priceData })
-
-			// Convert the signal groups to Trade instances
-			const trades = groupedSignalsWithPriceData.map(
-				({ entrySignal, exitSignal, tradeData }) =>
-					new Trade({ entrySignal, exitSignal, tradeData })
-			)
-
-			// If the policy is to exclude open positions from result, pop the last item
-			if (openPositionPolicy === 'exclude' && closeOpenPosition) {
-				trades.pop()
-			}
-
-			return trades
-		} else {
+		if (numberOfSignals < 1) {
 			return []
 		}
+
+		const isOddNumber = numberOfSignals % 2 === 1
+		const lastSignalType = signals[signals.length - 1].type
+
+		// Early indication that something is wrong
+		if ((isOddNumber && !closeOpenPosition) || (!isOddNumber && lastSignalType === 'enter')) {
+			throw new Error('No exit signal for open position provided')
+		}
+
+		// Group the entries and exits together
+		const groupedSignals = this.groupSignals({ signals, closeOpenPosition })
+
+		// Add the data between entry and exit
+		const groupedSignalsWithPriceData = this.assignPriceData({ groupedSignals, priceData })
+
+		// Convert the signal groups to Trade instances
+		const trades = groupedSignalsWithPriceData.map(
+			({ entrySignal, exitSignal, tradeData }) =>
+				new Trade({ entrySignal, exitSignal, tradeData })
+		)
+
+		// If the policy is to exclude open positions from result, pop the last item
+		if (openPositionPolicy === 'exclude' && closeOpenPosition) {
+			trades.pop()
+		}
+
+		return trades
 	}
 
 	/**

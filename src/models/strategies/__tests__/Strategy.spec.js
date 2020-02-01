@@ -27,8 +27,6 @@ describe('Strategy class', () => {
 		expect(s.processBar()).toBe('woop')
 	})
 
-	it.todo('Saves test results to avoid running multiple times')
-
 	describe('Test', () => {
 		it('Calls to extract the data to be tested', () => {
 			const s = new Strategy()
@@ -265,8 +263,6 @@ describe('Strategy class', () => {
 		})
 
 		it.todo('Adds information about open trade')
-
-		it.todo('Checks for identical tests before running')
 	})
 
 	describe('Handle open positions', () => {
