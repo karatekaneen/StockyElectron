@@ -1,7 +1,20 @@
 import _Signal from '../Signal'
 import _Trade from '../Trade'
 
-export default class Strategy {
+/**
+ * Class that tests a set of data given a set of rules. Somewhat of a parent class to be extended.
+ */
+class Strategy {
+	/**
+	 * Creates instance of the Strategy class
+	 * @param {Object} params
+	 * @param {string} params.strategyName The name of the strategy
+	 * @param {Object} params.initialContext The initial context to be injected in to the test. Optional.
+	 * @param {Function} params.signalFunction The function that generates the signals
+	 * @param {string} params.openPositionPolicy How the open positions shoould be handled at the end of the test. Can only be 'excluded', 'conservative' or 'optimistic'
+	 * @param {Signal} params.Signal The Signal class
+	 * @param {Trade} params.Trade The Trade class
+	 */
 	constructor({
 		strategyName = 'flipper',
 		initialContext,
@@ -21,14 +34,38 @@ export default class Strategy {
 		}
 	}
 
-	// TODO Make async to avoid blocking?
-	test({ stock, startDate, endDate, initialContext = this.context } = {}) {
+	/**
+	 * Output from the test function
+	 * @typedef TestOutput
+	 * @property {Array<Signal>} signals All the signals that the test generated
+	 * @property {Array<Object>} contextHistory The context that got passed from bar to bar. Useful to creaate charts with the signals visualized
+	 * @property {Object} context The context as it was on the last bar
+	 * @property {Object|null} pendingSignal If a signal was created on the last day as the test ended it is marked as pending. Useful for live trading to know what to execute the day after.
+	 * @property {Array<Trade>} trades The trades that the test generated.
+	 * @property {Signal|null} closeOpenPosition If a position was open when the test ended, this sis the signal that was generated to close the open position. Useful to display open profit but mainly used to calculate the last trade.
+	 * @property {Trade|null} openTrade If there was an open position when the test ended, this summarizes the open profit etc. Depending on the openPositionPolicy in the Strategy it is either calculated on the last close or the "stop" price. It is also included as the last item in the `trades` prop.
+	 */
+
+	/**
+	 * The main test function that runs the backtest on a particular stock.
+	 * @param {Object} params
+	 * @param {Stock} params.stock The stock with the pricedata to test
+	 * @param {Date} params.startDate The date to start the test. Defaults to first date
+	 * @param {Date} params.endDate The date to end the test. Defaults to last date
+	 * @param {Object} params.initialContext If any initial context should be used it can be passed here.
+	 * @returns {TestOutput}
+	 * @todo Make async to avoid blocking?
+	 * @todo It may be a good idea to refactor to pass all the data and index instead to allow for more complex calculations etc. OR make the function in the same way as `processBar` to force each strategy to implement own test function?
+	 */
+	test({ stock, startDate = null, endDate = null, initialContext = this.context } = {}) {
+		// TODO Make async to avoid blocking?
+		// TODO It may be a good idea to refactor to pass all the data and index instead to allow for more complex calculations etc.
+		// ? Maybe the better way is to add ability to override the default test function
 		const { priceData, ...stockSummary } = stock
+		let openTrade = null
 
 		const testData = this.extractData({ priceData, startDate, endDate })
 
-		// TODO It may be a good idea to refactor to pass all the data and index instead to allow for more complex calculations etc.
-		// ? Maybe the better way is to add ability to override the default test function
 		// Run the test in a reduce:
 		const {
 			signals,
@@ -92,7 +129,20 @@ export default class Strategy {
 
 		const trades = this.summarizeSignals({ signals, priceData, closeOpenPosition })
 
-		return { signals, contextHistory, context, pendingSignal, closeOpenPosition }
+		// Separate the open trade in to own object as well
+		if (closeOpenPosition && trades.length > 0) {
+			openTrade = trades[trades.length - 1]
+		}
+
+		return {
+			signals,
+			contextHistory,
+			context,
+			pendingSignal,
+			trades,
+			closeOpenPosition,
+			openTrade
+		}
 	}
 
 	/**
@@ -368,3 +418,5 @@ export default class Strategy {
 		}
 	}
 }
+
+export default Strategy
