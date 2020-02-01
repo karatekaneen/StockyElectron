@@ -39,7 +39,7 @@ describe('Strategy class', () => {
 
 			expect(s.extractData).toHaveBeenCalledWith({
 				priceData: ['Array of price data'],
-				startDate: undefined,
+				startDate: null,
 				endDate
 			})
 		})
