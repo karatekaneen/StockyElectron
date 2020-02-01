@@ -27,9 +27,16 @@ export const createInitApp = ({
 				d.date = new Date(d.date)
 				return d
 			})
-			const { signals, context } = flipper.test({ stock })
+			const { signals, context, pendingSignal, trades, openTrade } = flipper.test({ stock })
+			const log = trades.forEach(({ resultPerStock, resultPercent, tradeData }) => {
+				console.log({ resultPerStock, resultPercent, tradeData: tradeData.length })
+			})
 
-			// console.log(JSON.stringify({ signals, context }, null, 2))
+			console.log(signals)
+			const avg =
+				trades.reduce((acc, current) => (acc += current.resultPercent), 0) / trades.length
+			console.log({ avg, number: trades.length })
+
 			event.reply('test-strategy', { signals, context })
 		})
 	}
