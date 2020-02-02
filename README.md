@@ -2,14 +2,29 @@
 
 ## ToDo
 
--  Stock selector component
 -  API wrapper class
--  Chart component
--  Indicator framework
--  Signal framework
--  Backtester
+-  Backtester "class"
+-  Portfolio class
 -  Monte Carlo
--
+
+### Views
+
+-  Test summary
+-  "Home screen"
+-  Portfolio
+-  Log
+
+#### UI Components
+
+-  Stock selector component ( For selecting what stock to display )
+-  Test summary table
+-  Signal overlay on charts
+
+## Done
+
+-  ~~Chart component~~
+-  ~~Strategy framework~~
+-  ~~Signal framework~~
 
 ## Project setup
 
