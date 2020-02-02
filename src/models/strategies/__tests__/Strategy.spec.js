@@ -30,7 +30,7 @@ describe('Strategy class', () => {
 	describe('Test', () => {
 		it('Calls to extract the data to be tested', () => {
 			const s = new Strategy()
-			s.extractData = jest.fn().mockReturnValue([])
+			s.extractData = jest.fn().mockReturnValue({ startIndex: 0, endIndex: 6 })
 
 			const mockStock = { priceData: ['Array of price data'] }
 			const endDate = new Date('1995-12-17T03:24:00').toISOString()
@@ -51,11 +51,11 @@ describe('Strategy class', () => {
 
 			s.processBar = jest.fn().mockReturnValue({ signal: null, context: null })
 
-			s.extractData = jest
-				.fn()
-				.mockReturnValue([{ bar: 'first' }, { bar: 'second' }, { bar: 'third' }])
+			s.extractData = jest.fn().mockReturnValue({ startIndex: 0, endIndex: 2 })
 
-			const mockStock = { priceData: ['Array of price data'] }
+			const mockStock = {
+				priceData: [{ bar: 'first' }, { bar: 'second' }, { bar: 'third' }, { bar: 'fourth' }]
+			}
 			const endDate = new Date('1995-12-17T03:24:00').toISOString()
 
 			s.test({ stock: mockStock, endDate })
@@ -75,16 +75,11 @@ describe('Strategy class', () => {
 				.mockReturnValueOnce({ signal: null, context: { call: 'third' } })
 				.mockReturnValueOnce({ signal: null, context: { call: 'fourth' } })
 
-			s.extractData = jest
-				.fn()
-				.mockReturnValue([
-					{ bar: 'first' },
-					{ bar: 'second' },
-					{ bar: 'third' },
-					{ bar: 'fourth' }
-				])
+			s.extractData = jest.fn().mockReturnValue({ startIndex: 0, endIndex: 3 })
 
-			const mockStock = { priceData: ['Array of price data'] }
+			const mockStock = {
+				priceData: [{ bar: 'first' }, { bar: 'second' }, { bar: 'third' }, { bar: 'fourth' }]
+			}
 			const endDate = new Date('1995-12-17T03:24:00').toISOString()
 
 			s.test({ stock: mockStock, endDate })
@@ -110,8 +105,6 @@ describe('Strategy class', () => {
 					context: { call: 'fourth' }
 				})
 
-			s.extractData = jest.fn(({ priceData }) => priceData)
-
 			const mockStock = {
 				priceData: [
 					{ open: 25, high: 32, low: 29, close: 15 },
@@ -120,6 +113,10 @@ describe('Strategy class', () => {
 					{ open: 43, high: 65, low: 76, close: 34 }
 				]
 			}
+			s.extractData = jest.fn(({ priceData }) => ({
+				startIndex: 0,
+				endIndex: mockStock.priceData.length
+			}))
 
 			const { pendingSignal } = s.test({ stock: mockStock })
 
@@ -147,16 +144,11 @@ describe('Strategy class', () => {
 				.mockReturnValueOnce({ signal: null, context: { call: 'third' } })
 				.mockReturnValueOnce({ signal: null, context: { call: 'fourth' } })
 
-			s.extractData = jest
-				.fn()
-				.mockReturnValue([
-					{ bar: 'first' },
-					{ bar: 'second' },
-					{ bar: 'third' },
-					{ bar: 'fourth' }
-				])
+			s.extractData = jest.fn().mockReturnValue({ startIndex: 0, endIndex: 3 })
 
-			const mockStock = { priceData: ['Array of price data'] }
+			const mockStock = {
+				priceData: [{ bar: 'first' }, { bar: 'second' }, { bar: 'third' }, { bar: 'fourth' }]
+			}
 			const endDate = new Date('1995-12-17T03:24:00').toISOString()
 
 			const { contextHistory } = s.test({ stock: mockStock, endDate })
@@ -209,16 +201,11 @@ describe('Strategy class', () => {
 				.mockReturnValueOnce({ signal: { type: 'Exit' }, context: { call: 'third' } })
 				.mockReturnValueOnce({ signal: null, context: { call: 'fourth' } })
 
-			s.extractData = jest
-				.fn()
-				.mockReturnValue([
-					{ bar: 'first' },
-					{ bar: 'second' },
-					{ bar: 'third' },
-					{ bar: 'fourth' }
-				])
+			s.extractData = jest.fn().mockReturnValue({ startIndex: 0, endIndex: 3 })
 
-			const mockStock = { priceData: ['Array of price data'] }
+			const mockStock = {
+				priceData: [{ bar: 'first' }, { bar: 'second' }, { bar: 'third' }, { bar: 'fourth' }]
+			}
 			const endDate = new Date('1995-12-17T03:24:00').toISOString()
 
 			const { signals } = s.test({ stock: mockStock, endDate })
@@ -239,16 +226,14 @@ describe('Strategy class', () => {
 				.mockReturnValueOnce({ signal: { type: 'Exit' }, context: { call: 'third' } })
 				.mockReturnValueOnce({ signal: null, context: { call: 'fourth' } })
 
-			s.extractData = jest
-				.fn()
-				.mockReturnValue([
-					{ bar: 'first' },
-					{ bar: 'second' },
-					{ bar: 'third' },
-					{ bar: 'fourth' }
-				])
+			s.extractData = jest.fn().mockReturnValue({
+				startIndex: 0,
+				endIndex: 3
+			})
 
-			const mockStock = { priceData: ['Array of price data'] }
+			const mockStock = {
+				priceData: [{ bar: 'first' }, { bar: 'second' }, { bar: 'third' }, { bar: 'fourth' }]
+			}
 			const endDate = new Date('1995-12-17T03:24:00').toISOString()
 
 			s.test({ stock: mockStock, endDate })
@@ -539,8 +524,16 @@ describe('Strategy class', () => {
 			s.summarizeSignals({ signals, priceData: [], closeOpenPosition: null })
 			expect(Trade).toHaveBeenCalledTimes(2)
 
-			expect(Trade).toHaveBeenCalledWith(mockResponse[0])
-			expect(Trade).toHaveBeenCalledWith(mockResponse[1])
+			expect(Trade).toHaveBeenCalledWith({
+				entry: { type: 'entry signal' },
+				exit: { type: 'exit signal' },
+				tradeData: ['array', 'of', 'price', 'data']
+			})
+			expect(Trade).toHaveBeenCalledWith({
+				entry: { type: 'another entry signal' },
+				exit: { type: 'another exit signal' },
+				tradeData: ['array', 'of', 'price', 'data']
+			})
 		})
 
 		it('Return array of Trades', () => {
@@ -677,20 +670,20 @@ describe('Strategy class', () => {
 
 			expect(group1.entrySignal).toEqual({ date: new Date('2019-12-13T00:00:00.000Z') })
 			expect(group1.tradeData[0].index).toBe(5)
-			expect(group1.tradeData[group1.tradeData.length - 1].index).toBe(19)
-			expect(group1.tradeData.length).toBe(15)
+			expect(group1.tradeData[group1.tradeData.length - 1].index).toBe(20)
+			expect(group1.tradeData.length).toBe(16)
 			expect(group1.exitSignal).toEqual({ date: new Date('2019-12-14T00:00:00.000Z') })
 
 			expect(group2.entrySignal).toEqual({ date: new Date('2019-12-15T00:00:00.000Z') })
 			expect(group2.tradeData[0].index).toBe(21)
-			expect(group2.tradeData[group2.tradeData.length - 1].index).toBe(23)
-			expect(group2.tradeData.length).toBe(3)
+			expect(group2.tradeData[group2.tradeData.length - 1].index).toBe(24)
+			expect(group2.tradeData.length).toBe(4)
 			expect(group2.exitSignal).toEqual({ date: new Date('2019-12-16T00:00:00.000Z') })
 
 			expect(group3.entrySignal).toEqual({ date: new Date('2019-12-17T00:00:00.000Z') })
 			expect(group3.tradeData[0].index).toBe(26)
-			expect(group3.tradeData[group3.tradeData.length - 1].index).toBe(33)
-			expect(group3.tradeData.length).toBe(8)
+			expect(group3.tradeData[group3.tradeData.length - 1].index).toBe(34)
+			expect(group3.tradeData.length).toBe(9)
 			expect(group3.exitSignal).toEqual({ date: new Date('2019-12-18T00:00:00.000Z') })
 		})
 
@@ -789,7 +782,7 @@ describe('Strategy class', () => {
 			).toEqual({ startIndex: 0, endIndex: 99 })
 		})
 
-		it('Sets endIndex to array length if no end provided', () => {
+		it('Sets endIndex to array length - 1 if no end provided', () => {
 			const s = new Strategy({ initialContext: null })
 
 			s.searchForDate = jest.fn().mockReturnValueOnce(1)
@@ -811,7 +804,7 @@ describe('Strategy class', () => {
 					startDate,
 					endDate
 				})
-			).toEqual({ startIndex: 1, endIndex: 100 })
+			).toEqual({ startIndex: 1, endIndex: 99 })
 		})
 	})
 

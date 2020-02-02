@@ -259,13 +259,7 @@ class Strategy {
 
 		// Convert the signal groups to Trade instances
 		const trades = groupedSignalsWithPriceData.map(({ entrySignal, exitSignal, tradeData }) => {
-			try {
-				return new Trade({ entry: entrySignal, exit: exitSignal, tradeData })
-			} catch (err) {
-				console.error(err)
-				console.log({ entrySignal, exitSignal, t: tradeData[0] })
-				throw err
-			}
+			return new Trade({ entry: entrySignal, exit: exitSignal, tradeData })
 		})
 
 		// If the policy is to exclude open positions from result, pop the last item
@@ -364,7 +358,7 @@ class Strategy {
 	 * @returns {Object} with the `startIndex` and `endIndex` props.
 	 */
 	extractData({ priceData, startDate, endDate }) {
-		const output = { startIndex: 0, endIndex: priceData.length }
+		const output = { startIndex: 0, endIndex: priceData.length - 1 }
 
 		if (startDate) {
 			output.startIndex = this.searchForDate({ priceData, date: startDate })
