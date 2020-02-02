@@ -135,7 +135,12 @@ class Strategy {
 			}
 		)
 
-		const trades = this.summarizeSignals({ signals, priceData, closeOpenPosition })
+		const trades = this.summarizeSignals({
+			signals,
+			priceData,
+			closeOpenPosition,
+			stock: stockSummary
+		})
 
 		// Separate the open trade in to own object as well
 		if (closeOpenPosition && trades.length > 0) {
@@ -235,7 +240,13 @@ class Strategy {
 	 * @returns {Array<Trade>} List of trades.
 	 */
 	summarizeSignals(
-		{ signals, priceData, closeOpenPosition, openPositionPolicy = this.openPositionPolicy },
+		{
+			signals,
+			priceData,
+			closeOpenPosition,
+			openPositionPolicy = this.openPositionPolicy,
+			stock
+		},
 		{ Trade = this.Trade } = {}
 	) {
 		const numberOfSignals = signals.length
@@ -259,7 +270,7 @@ class Strategy {
 
 		// Convert the signal groups to Trade instances
 		const trades = groupedSignalsWithPriceData.map(({ entrySignal, exitSignal, tradeData }) => {
-			return new Trade({ entry: entrySignal, exit: exitSignal, tradeData })
+			return new Trade({ entry: entrySignal, exit: exitSignal, tradeData, stock })
 		})
 
 		// If the policy is to exclude open positions from result, pop the last item

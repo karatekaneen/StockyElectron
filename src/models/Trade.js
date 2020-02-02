@@ -9,13 +9,14 @@ class Trade {
 	 * @param {Object} params
 	 * @param {Signal} params.entry the entry signal
 	 * @param {Signal} params.exit the exit signal
+	 * @param {Stock} params.stock Information about the stock the trade was in. Will be used for UI and aggregation.
 	 * @param {Array<Object>} params.tradeData The price action between entry and exit
 	 * @param {Number} params.quantity The number of shares
 	 * @param {Object} deps
 	 * @param {Class} deps.Signal
 	 * @todo Add fees
 	 */
-	constructor({ entry, exit, tradeData, quantity = 1 }, { Signal = _Signal } = {}) {
+	constructor({ entry, exit, tradeData, stock, quantity = 1 }, { Signal = _Signal } = {}) {
 		// TODO Add fee calculation class and inject it here
 
 		// Helper methods to validate input
@@ -49,6 +50,7 @@ class Trade {
 		this.entry = entry
 		this.exit = exit
 		this.tradeData = tradeData
+		this.stock = stock
 		this.quantity = quantity
 		this.resultPerStock = this.roundNumber(exit.price - entry.price)
 		this.resultPercent = exit.price / entry.price - 1

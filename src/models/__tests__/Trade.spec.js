@@ -49,6 +49,17 @@ describe('Trade', () => {
 		expect(t instanceof Trade).toBe(true)
 	})
 
+	it('Adds the stock as props', () => {
+		const t = new Trade({
+			entry,
+			exit,
+			tradeData,
+			stock: { name: 'HM AB' }
+		})
+
+		expect(t.stock.name).toBe('HM AB')
+	})
+
 	it('Throws if start date is not equal to entry signal date', () => {
 		expect.assertions(1)
 

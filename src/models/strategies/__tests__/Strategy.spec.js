@@ -500,7 +500,7 @@ describe('Strategy class', () => {
 			})
 		})
 
-		it('Creates Trade instance with entry, exit and pricedata', () => {
+		it('Creates Trade instance with entry, exit, the stock and pricedata', () => {
 			const s = new Strategy({ initialContext: null })
 			const signals = [{ type: 'enter' }, { type: 'exit' }, { type: 'enter' }, { type: 'exit' }]
 
@@ -521,18 +521,25 @@ describe('Strategy class', () => {
 
 			s.assignPriceData = jest.fn().mockReturnValue(mockResponse)
 
-			s.summarizeSignals({ signals, priceData: [], closeOpenPosition: null })
+			s.summarizeSignals({
+				signals,
+				priceData: [],
+				closeOpenPosition: null,
+				stock: { name: 'HM AB' }
+			})
 			expect(Trade).toHaveBeenCalledTimes(2)
 
 			expect(Trade).toHaveBeenCalledWith({
 				entry: { type: 'entry signal' },
 				exit: { type: 'exit signal' },
-				tradeData: ['array', 'of', 'price', 'data']
+				tradeData: ['array', 'of', 'price', 'data'],
+				stock: { name: 'HM AB' }
 			})
 			expect(Trade).toHaveBeenCalledWith({
 				entry: { type: 'another entry signal' },
 				exit: { type: 'another exit signal' },
-				tradeData: ['array', 'of', 'price', 'data']
+				tradeData: ['array', 'of', 'price', 'data'],
+				stock: { name: 'HM AB' }
 			})
 		})
 
