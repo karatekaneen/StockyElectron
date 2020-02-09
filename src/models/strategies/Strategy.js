@@ -182,49 +182,49 @@ class Strategy {
 		{ Signal = this.Signal } = {}
 	) {
 		let closeOpenPosition = null
+		if (signals.length > 0) {
+			// Odd number of signals is a tell of open position:
+			const isSignalsLengthOdd = signals.length % 2 === 1
 
-		// Odd number of signals is a tell of open position:
-		const isSignalsLengthOdd = signals.length % 2 === 1
+			// The last order type is also a tell of open positions:
+			const isLastSignalEnter = signals[signals.length - 1].type === 'enter'
 
-		// The last order type is also a tell of open positions:
-		const isLastSignalEnter = signals[signals.length - 1].type === 'enter'
+			// Check for open positions:
+			if (isSignalsLengthOdd && isLastSignalEnter) {
+				// There is an open position
 
-		// Check for open positions:
-		if (isSignalsLengthOdd && isLastSignalEnter) {
-			// There is an open position
-
-			if (openPositionPolicy === 'conservative' || openPositionPolicy === 'exclude') {
-				/*
-				If the openPositionPolicy the open p/l is calculated on where the "guaranteed" exit will be,
-				ie. the trailing trigger price for the exit
-				*/
-				closeOpenPosition = new Signal({
-					stock,
-					action: 'sell',
-					type: 'exit',
-					price: context.triggerPrice,
-					date: currentBar.date
-				})
-			} else if (openPositionPolicy === 'optimistic') {
-				/*
+				if (openPositionPolicy === 'conservative' || openPositionPolicy === 'exclude') {
+					/*
+					If the openPositionPolicy the open p/l is calculated on where the "guaranteed" exit will be,
+					ie. the trailing trigger price for the exit
+					*/
+					closeOpenPosition = new Signal({
+						stock,
+						action: 'sell',
+						type: 'exit',
+						price: context.triggerPrice,
+						date: currentBar.date
+					})
+				} else if (openPositionPolicy === 'optimistic') {
+					/*
 				If, on the other hand, the policy is optimistic the open p/l will be calculated as
 				the latest close.
 				*/
-				closeOpenPosition = new Signal({
-					stock,
-					action: 'sell',
-					type: 'exit',
-					price: currentBar.close,
-					date: currentBar.date
-				})
+					closeOpenPosition = new Signal({
+						stock,
+						action: 'sell',
+						type: 'exit',
+						price: currentBar.close,
+						date: currentBar.date
+					})
+				}
+			} else if (isSignalsLengthOdd && !isLastSignalEnter) {
+				// ! Logic error somewhere :(
+				throw new Error(
+					'Logic error found. Uneven length on signal array and last signal was to exit'
+				)
 			}
-		} else if (isSignalsLengthOdd && !isLastSignalEnter) {
-			// ! Logic error somewhere :(
-			throw new Error(
-				'Logic error found. Uneven length on signal array and last signal was to exit'
-			)
 		}
-
 		return closeOpenPosition
 	}
 
