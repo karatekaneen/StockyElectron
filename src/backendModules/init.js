@@ -1,12 +1,16 @@
 import { ipcMain as _ipcMain } from 'electron'
 import { DataFetcher as _DataFetcher } from './DataFetcher'
 import _Flipper from '../models/strategies/Flipper'
-import stock from '../../teststock.json'
+// import _PouchDB from 'pouchdb'
+import _low from 'lowdb'
+import _FileAsync from 'lowdb/adapters/FileAsync'
 
 export const createInitApp = ({
 	ipcMain = _ipcMain,
 	DataFetcher = _DataFetcher,
-	Flipper = _Flipper
+	Flipper = _Flipper,
+	low = _low,
+	FileAsync = _FileAsync
 } = {}) => {
 	const initApp = () => {
 		ipcMain.on('single-stock', async (event, { id }) => {
@@ -21,23 +25,86 @@ export const createInitApp = ({
 			event.reply('all-stocks-summary-response', resp)
 		})
 
-		ipcMain.on('test-strategy', async (event, arg) => {
+		ipcMain.on('test-strategy', async (event, { id }) => {
 			const flipper = new Flipper()
-			stock.priceData = stock.priceData.map(d => {
-				d.date = new Date(d.date)
-				return d
+			const dataFetcher = new DataFetcher({ API_URL: 'http://localhost:4000/graphql?' })
+			const resp = await dataFetcher.fetchStock({ id })
+
+			const { signals, context, pendingSignal, trades, openTrade } = flipper.test({
+				stock: resp
 			})
-			const { signals, context, pendingSignal, trades, openTrade } = flipper.test({ stock })
-			const log = trades.forEach(({ resultPerStock, resultPercent, tradeData }) => {
-				console.log({ resultPerStock, resultPercent, tradeData: tradeData.length })
+			const log = trades.map(({ resultPerStock, resultPercent, tradeData }) => {
+				return { resultPerStock, resultPercent, tradeData: tradeData.length }
 			})
 
-			console.log(signals)
+			console.log(log)
+
 			const avg =
 				trades.reduce((acc, current) => (acc += current.resultPercent), 0) / trades.length
 			console.log({ avg, number: trades.length })
 
 			event.reply('test-strategy', { signals, context })
+		})
+
+		ipcMain.on('get-signals', async event => {
+			const adapter = new FileAsync('db.json')
+			const db = await low(adapter)
+			const s = await db
+				.get('signals')
+				.sortBy(x => {
+					const d = new Date(x.date)
+					return -d
+				})
+				.take(100)
+				.value()
+
+			event.reply('get-signals', s)
+		})
+
+		ipcMain.on('test-all-stocks', async (event, arg) => {
+			try {
+				const flipper = new Flipper()
+				const dataFetcher = new DataFetcher({ API_URL: 'http://localhost:4000/graphql?' })
+				const adapter = new FileAsync('db.json')
+				const db = await low(adapter)
+				// await db.defaults({ signals: [], trades: [] }).write()
+
+				// console.info('Starting data fetching')
+				// const resp = await dataFetcher.fetchStocks()
+				// console.info('Data downloaded')
+
+				// console.info('Starting tests')
+				// const testResults = resp.map(stock => {
+				// 	const { signals, context, pendingSignal, trades, openTrade } = flipper.test({
+				// 		stock
+				// 	})
+
+				// 	const avg =
+				// 		trades.reduce((acc, current) => (acc += current.resultPercent), 0) / trades.length
+				// 	console.log({ avg, number: trades.length })
+
+				// 	const signalPromises = db
+				// 		.get('signals')
+				// 		.push(...signals)
+				// 		.write()
+
+				// 	return { signalPromises }
+				// })
+				// await Promise.all(testResults)
+
+				const s = await db
+					.get('signals')
+					.sortBy(x => {
+						const d = new Date(x.date)
+						return -d
+					})
+					.take(5)
+					.value()
+
+				event.reply('test-all-stocks', s)
+			} catch (err) {
+				console.log(err)
+			}
 		})
 	}
 	return initApp
