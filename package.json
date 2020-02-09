@@ -19,6 +19,7 @@
 		"axios": "^0.19.0",
 		"core-js": "^3.1.2",
 		"lightweight-charts": "^1.1.0",
+		"lowdb": "^1.0.0",
 		"vue": "^2.6.10",
 		"vue-router": "^3.0.6",
 		"vuetify": "^2.1.0",

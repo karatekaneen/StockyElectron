@@ -6,6 +6,7 @@
 -  Backtester "class"
 -  Portfolio class
 -  Monte Carlo
+-  Analyzer class
 
 ### Views
 
@@ -18,6 +19,7 @@
 
 -  Stock selector component ( For selecting what stock to display )
 -  Test summary table
+-  Signal list
 -  Signal overlay on charts
 
 ## Done
