@@ -11,14 +11,12 @@ export class DataFetcher {
 
 	async fetchStock({
 		id,
-		fieldString = 'id, name, list, priceData{open, high, low, close, date'
-	}) {
-		const query = `{stock( id: ${id}) {${fieldString}}}}`
+		fieldString = 'id, name, list, priceData{open, high, low, close, date}'
+	} = {}) {
+		const query = `{stock( id: ${id}) {${fieldString}}}`
 		const { data } = await this.axios.post(this.API_URL, { query })
-		console.log(data)
 		const stock = new Stock({ data: data.data.stock })
 
-		await this.fs.writeFile('./teststock.json', JSON.stringify(stock, null, 2))
 		return stock
 	}
 
@@ -33,5 +31,19 @@ export class DataFetcher {
 		const { data } = await this.axios.post(this.API_URL, { query })
 		console.log(data)
 		return data.data.stocks
+	}
+
+	// TODO Add pagination etc to limit trafic to API. consumes A LOT of memory
+	async fetchStocks({
+		fieldString = 'id, name, list, priceData{open, high, low, close, date}'
+	} = {}) {
+		const query = `
+		{
+			stocks{
+				${fieldString}
+			}
+		}`
+		const { data } = await this.axios.post(this.API_URL, { query })
+		return data.data.stocks.map(stock => new Stock({ data: stock }))
 	}
 }
