@@ -16,7 +16,8 @@ const createDBWrapper = async ({ low = _low, FileAsync = _FileAsync } = {}) => {
  * const t = await DBWrapper.getDocument({
  * 	documentName: 'trades',
  * 	dbFunctions: [
- * 		x => x.map(({ resultPercent }) => resultPercent)
+ * 		x => x.map(({ resultPercent }) => resultPercent),
+ * 		x => x.filter(x => x > 0.05)
  * 		// ... more functions here if needed
  * 	]
  * })
