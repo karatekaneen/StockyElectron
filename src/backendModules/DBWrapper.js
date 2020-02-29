@@ -38,8 +38,8 @@ const getDocument = async ({ documentName, dbFunctions = [], DBWrapper = createD
 		dbChain = func(dbChain)
 	})
 
-	const data = await dbChain.value()
-	return data
+	// const data = await
+	return dbChain.value()
 }
 
 export default { getDocument }
