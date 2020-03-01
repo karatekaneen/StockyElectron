@@ -1,3 +1,9 @@
+/**
+ * Calculates the standard deviation of an array, must calculate the avg before passing it in here.
+ * @param {Array<number>} data The array to calculate the STD from
+ * @param {number} average The average of the array passed in
+ * @returns {number} The standard deviation
+ */
 const calculateSTD = (data, average) => {
 	if (data && data.length > 0 && average) {
 		return Math.sqrt(data.reduce((sq, n) => sq + Math.pow(n - average, 2), 0) / (data.length - 1))
@@ -6,12 +12,17 @@ const calculateSTD = (data, average) => {
 	return null
 }
 
+/**
+ * Calculates a bunch of statistics based on a sequence of trade results.
+ * @param {Array<number>} values Sequence of trade results
+ * @returns {object} Statistics about the sequence of results.
+ */
 const analyze = values => {
 	if (values.some(val => typeof val !== 'number')) {
 		throw new Error('Array must only consist of numbers')
 	}
-	const wins = []
 
+	const wins = []
 	const losses = []
 
 	const results = values.reduce(
