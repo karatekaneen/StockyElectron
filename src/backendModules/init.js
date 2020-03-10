@@ -4,13 +4,16 @@ import _Flipper from '../models/strategies/Flipper'
 // import _PouchDB from 'pouchdb'
 import _low from 'lowdb'
 import _FileAsync from 'lowdb/adapters/FileAsync'
+import _DBWrapper from './DBWrapper'
+import TradeAnalyzer from './TradeAnalyzer'
 
 export const createInitApp = ({
 	ipcMain = _ipcMain,
 	DataFetcher = _DataFetcher,
 	Flipper = _Flipper,
 	low = _low,
-	FileAsync = _FileAsync
+	FileAsync = _FileAsync,
+	DBWrapper = _DBWrapper
 } = {}) => {
 	const initApp = () => {
 		ipcMain.on('single-stock', async (event, { id }) => {
@@ -49,6 +52,27 @@ export const createInitApp = ({
 		ipcMain.on('get-signals', async event => {
 			const adapter = new FileAsync('db.json')
 			const db = await low(adapter)
+
+			const temp = await DBWrapper.getDocument({
+				documentName: 'trades',
+				dbFunctions: [x => x.map(({ resultPercent, stock }) => ({ resultPercent, stock }))]
+			})
+
+			const tradesByList = temp.reduce((aggregate, current) => {
+				const list = aggregate[current.stock.list] || []
+				list.push(current.resultPercent)
+				aggregate[current.stock.list] = list
+				return aggregate
+			}, {})
+
+			const statsByCategories = []
+
+			Object.entries(tradesByList).forEach(([groupName, value]) => {
+				statsByCategories.push({ groupName, ...TradeAnalyzer.analyze(value) })
+			})
+
+			console.log(JSON.stringify(statsByCategories, null, 2))
+
 			const s = await db
 				.get('signals')
 				.sortBy(x => {
@@ -67,28 +91,37 @@ export const createInitApp = ({
 				const dataFetcher = new DataFetcher({ API_URL: 'http://localhost:4000/graphql?' })
 				const adapter = new FileAsync('db.json')
 				const db = await low(adapter)
-				// await db.defaults({ signals: [], trades: [] }).write()
+				await db.defaults({ signals: [], trades: [] }).write()
 
-				// console.info('Starting data fetching')
-				// const resp = await dataFetcher.fetchStocks()
-				// console.info('Data downloaded')
+				console.info('Starting data fetching')
+				const resp = await dataFetcher.fetchStocks()
+				console.info('Data downloaded')
 
-				// console.info('Starting tests')
+				for (let i = 0; i < resp.length; i++) {
+					console.info('Starting tests', i)
+					const { trades } = flipper.test({
+						stock: resp[i]
+					})
+
+					console.log('Starting write', i)
+					// eslint-disable-next-line no-await-in-loop
+					const signalPromises = await db
+						.get('trades')
+						.push(...trades)
+						.write()
+
+					console.log('Finished write', i)
+				}
 				// const testResults = resp.map(stock => {
-				// 	const { signals, context, pendingSignal, trades, openTrade } = flipper.test({
-				// 		stock
-				// 	})
+				// const { signals, context, pendingSignal, trades, openTrade } = flipper.test({
+				// 	stock
+				// })
 
-				// 	const avg =
-				// 		trades.reduce((acc, current) => (acc += current.resultPercent), 0) / trades.length
-				// 	console.log({ avg, number: trades.length })
+				// const avg =
+				// trades.reduce((acc, current) => (acc += current.resultPercent), 0) / trades.length
+				// console.log({ avg, number: trades.length })
 
-				// 	const signalPromises = db
-				// 		.get('signals')
-				// 		.push(...signals)
-				// 		.write()
-
-				// 	return { signalPromises }
+				// return { signalPromises }
 				// })
 				// await Promise.all(testResults)
 

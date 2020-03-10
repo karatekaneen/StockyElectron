@@ -1,6 +1,6 @@
 {
 	"name": "stockyelectron",
-	"version": "0.1.4",
+	"version": "0.2.0",
 	"private": true,
 	"scripts": {
 		"serve": "vue-cli-service serve",
@@ -16,11 +16,13 @@
 		"version:minor": "npm version minor --git-tag-version false"
 	},
 	"dependencies": {
+		"apexcharts": "^3.16.0",
 		"axios": "^0.19.0",
 		"core-js": "^3.1.2",
 		"lightweight-charts": "^1.1.0",
 		"lowdb": "^1.0.0",
 		"vue": "^2.6.10",
+		"vue-apexcharts": "^1.5.2",
 		"vue-router": "^3.0.6",
 		"vuetify": "^2.1.0",
 		"vuex": "^3.0.1"

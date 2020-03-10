@@ -12,6 +12,8 @@
 			<!-- <v-btn @click="d = [d[1]]">remove 1</v-btn> -->
 			<!-- <StockList /> -->
 			<Chart v-if="response" :chartData="d" />
+			<RadialChart width="50%" />
+			<BacktestTable />
 			<SignalTable />
 		</v-card>
 	</v-container>
@@ -23,10 +25,14 @@ import { ipcRenderer } from 'electron'
 import Stock from '../models/Stock'
 // import StockList from './StockList'
 import SignalTable from './SignalTable'
+import RadialChart from './charts/RadialChart'
+import BacktestTable from './BacktestTable'
 export default {
 	components: {
 		Chart,
-		SignalTable
+		SignalTable,
+		BacktestTable,
+		RadialChart
 		// StockList
 	},
 
