@@ -17,7 +17,6 @@ class Signal {
 			this.validateInput({
 				stock,
 				price,
-				date,
 				action,
 				type
 			})
@@ -30,7 +29,7 @@ class Signal {
 			 * @type {number}
 			 */
 			this.price = price
-			this.date = date
+			this.date = date instanceof Date ? date : new Date(date)
 			this.action = action.toLowerCase()
 			this.type = type
 			this.status = date === null && price === null ? 'pending' : 'executed'
@@ -44,15 +43,13 @@ class Signal {
 	 * @param {Object} params
 	 * @param {Object} params.stock The stock that the signal belongs to
 	 * @param {Number} params.price The price where the signal was executed
-	 * @param {Date} params.date The date where the signal was executed
 	 * @param {String} params.action "buy" or "sell"
 	 * @param {String} params.type "enter" or "exit"
 	 * @returns {Boolean} is the input valid
 	 */
-	validateInput({ stock, price, date, action, type }) {
+	validateInput({ stock, price, action, type }) {
 		const isStockValid = Boolean(stock) // This should later on be 'instanceof stock...'
-		const isPriceValid = typeof price === 'number' && price >= 0
-		const isDateValid = date instanceof Date
+		const isPriceValid = (typeof price === 'number' && price >= 0) || price === null
 		const isActionValid =
 			typeof action === 'string' &&
 			(action.toLowerCase() === 'buy' || action.toLowerCase() === 'sell')
@@ -60,11 +57,7 @@ class Signal {
 			typeof type === 'string' &&
 			(type.toLowerCase() === 'enter' || type.toLowerCase() === 'exit')
 
-		// On the last bar price and date WILL be null because the next day hasn't opened yet.
-		const isCurrentBarDataValid =
-			(isDateValid && isPriceValid) || (date === null && price === null)
-
-		return isStockValid && isCurrentBarDataValid && isActionValid && isTypeValid
+		return isStockValid && isPriceValid && isActionValid && isTypeValid
 	}
 }
 

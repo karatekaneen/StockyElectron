@@ -1,23 +1,12 @@
 import Trade from '../Trade'
 import mockData from './__mocks__/tradeData.json'
 import Signal from '../Signal'
+import Fee from '../Fee'
 // jest.mock('../Signal')
 
 // Convert the dates
 const entrySignal = mockData.entrySignal
 const exitSignal = mockData.exitSignal
-entrySignal.date = new Date(entrySignal.date)
-exitSignal.date = new Date(exitSignal.date)
-
-// Convert the price
-// entrySignal.price = Number(entrySignal.price)
-// exitSignal.price = Number(exitSignal.price)
-
-// Convert the dates to proper Date instances
-const tradeData = mockData.priceData.map(pricePoint => {
-	pricePoint.date = new Date(pricePoint.date)
-	return pricePoint
-})
 
 describe('Trade', () => {
 	let entry
@@ -29,21 +18,10 @@ describe('Trade', () => {
 		exit = new Signal(exitSignal)
 	})
 
-	it('Throws if entry and exit isnt signal instances', () => {
-		expect.assertions(1)
-
-		try {
-			const t = new Trade({ entry: null, exit: null, tradeData: [] })
-		} catch (err) {
-			expect(err.message).toBe('Entry and exit must be Signal instances')
-		}
-	})
-
 	it('Has a working constructor', () => {
 		const t = new Trade({
 			entry,
-			exit,
-			tradeData
+			exit
 		})
 
 		expect(t instanceof Trade).toBe(true)
@@ -53,50 +31,16 @@ describe('Trade', () => {
 		const t = new Trade({
 			entry,
 			exit,
-			tradeData,
 			stock: { name: 'HM AB' }
 		})
 
 		expect(t.stock.name).toBe('HM AB')
 	})
 
-	it('Throws if start date is not equal to entry signal date', () => {
-		expect.assertions(1)
-
-		entry.date = new Date('1999-01-02')
-
-		try {
-			const t = new Trade({
-				entry,
-				exit,
-				tradeData
-			})
-		} catch (err) {
-			expect(err.message).toBe('Invalid date range')
-		}
-	})
-
-	it('require end date to be equal to exit signal date', () => {
-		expect.assertions(1)
-
-		exit.date = new Date('1999-01-02')
-
-		try {
-			const t = new Trade({
-				entry,
-				exit,
-				tradeData
-			})
-		} catch (err) {
-			expect(err.message).toBe('Invalid date range')
-		}
-	})
-
 	it('Sets quantity to 1 by default', () => {
 		const t = new Trade({
 			entry,
-			exit,
-			tradeData
+			exit
 		})
 
 		expect(t.quantity).toBe(1)
@@ -105,8 +49,7 @@ describe('Trade', () => {
 	it('Can set quantity', () => {
 		const t = new Trade({
 			entry,
-			exit,
-			tradeData
+			exit
 		})
 
 		expect(t.quantity).toBe(1)
@@ -117,8 +60,7 @@ describe('Trade', () => {
 	it('Calculates $ profit/loss per stock', () => {
 		const t = new Trade({
 			entry,
-			exit,
-			tradeData
+			exit
 		})
 
 		expect(t.resultPerStock).toBe(9.1)
@@ -127,8 +69,7 @@ describe('Trade', () => {
 	it('Calculates % profit/loss', () => {
 		const t = new Trade({
 			entry,
-			exit,
-			tradeData
+			exit
 		})
 
 		expect(t.resultPercent).toBe(0.2643043857101366)
@@ -138,8 +79,7 @@ describe('Trade', () => {
 	it('Calculates $ profit/loss', () => {
 		const t = new Trade({
 			entry,
-			exit,
-			tradeData
+			exit
 		})
 
 		expect(t.resultPerStock).toBe(t.resultInCash)
@@ -149,8 +89,7 @@ describe('Trade', () => {
 	it('updates $ profit/loss when changing quantity', () => {
 		const t = new Trade({
 			entry,
-			exit,
-			tradeData
+			exit
 		})
 
 		expect(t.resultInCash).toBe(t.resultPerStock)
@@ -161,8 +100,7 @@ describe('Trade', () => {
 	it('updates position values when changing quantity', () => {
 		const t = new Trade({
 			entry,
-			exit,
-			tradeData
+			exit
 		})
 
 		expect(t.initialValue).toBe(t.entry.price)
@@ -176,7 +114,6 @@ describe('Trade', () => {
 		const t = new Trade({
 			entry,
 			exit,
-			tradeData,
 			quantity: 123
 		})
 
@@ -186,142 +123,90 @@ describe('Trade', () => {
 		const t = new Trade({
 			entry,
 			exit,
-			tradeData,
 			quantity: 123
 		})
 
 		expect(t.finalValue).toBe(5354.19)
 	})
 
-	it('Creates array with position value throughout the whole trade', () => {
+	it('setting fee returns Trade instance', () => {
 		const t = new Trade({
 			entry,
 			exit,
-			tradeData,
 			quantity: 123
 		})
 
-		const resp = t.calculatePerformancePercent({ entryPrice: entry.price, tradeData })
-		const performanceOHLC = resp.map(({ open, high, low, close }) => ({ open, high, low, close }))
-		const storedPerf = t.performancePercent.map(({ open, high, low, close }) => ({
-			open,
-			high,
-			low,
-			close
-		}))
+		const fee = new Fee({ percentage: 0.01, minimum: 25 })
 
-		expect(storedPerf).toEqual(performanceOHLC)
-		expect(performanceOHLC).toEqual([
-			{
-				close: 0.02788266047051992,
-				high: 0.03398199244844617,
-				low: -0.008132442637235003,
-				open: 0
-			},
-			{
-				close: -0.018007551553877357,
-				high: 0.018007551553877357,
-				low: -0.02004066221318611,
-				open: 0.018007551553877357
-			},
-			{
-				close: -0.03601510310775492,
-				high: -0.02410688353180361,
-				low: -0.04821376706360722,
-				open: -0.03194888178913742
-			},
-			{
-				close: 0.00377577693871631,
-				high: 0.018007551553877357,
-				low: -0.040081324426372425,
-				open: -0.03601510310775492
-			},
-			{
-				close: 0.02788266047051992,
-				high: 0.05198954400232353,
-				low: -0.004066221318617501,
-				open: -0.004066221318617501
-			},
-			{
-				close: 0.015974440894568606,
-				high: 0.03979088004647103,
-				low: 0.007841998257333812,
-				open: 0.03979088004647103
-			},
-			{
-				close: 0.015974440894568606,
-				high: 0.02991577112982867,
-				low: 0,
-				open: 0.00377577693871631
-			},
-			{
-				close: 0.02788266047051992,
-				high: 0.03194888178913742,
-				low: 0.011908219575951312,
-				open: 0.02004066221318611
-			},
-			{
-				close: 0.02991577112982867,
-				high: 0.03979088004647103,
-				low: 0.0058088875980250605,
-				open: 0.03194888178913742
-			},
-			{
-				close: 0.03979088004647103,
-				high: 0.04385710136508853,
-				low: 0.02004066221318611,
-				open: 0.02381643915190242
-			},
-			{
-				close: 0.03979088004647103,
-				high: 0.04792332268370603,
-				low: 0.03194888178913742,
-				open: 0.04792332268370603
-			},
-			{
-				close: 0.03194888178913742,
-				high: 0.03979088004647103,
-				low: 0.00377577693871631,
-				open: 0.011908219575951312
-			},
-			{
-				close: 0.02004066221318611,
-				high: 0.03601510310775492,
-				low: 0,
-				open: 0.26430438571013654
-			}
-		])
+		const resp = t.setFee(fee)
+		expect(resp instanceof Trade).toBe(true)
 	})
 
-	it('Calculates p/l for each bar', () => {
+	it('entry- & exitprice is updated after setting fee', () => {
 		const t = new Trade({
 			entry,
 			exit,
-			tradeData,
-			quantity: 1000
+			quantity: 123
 		})
 
-		const withoutDate = t.performanceCash.map(({ open, high, low, close }) => ({
-			open,
-			high,
-			low,
-			close
-		}))
+		const fee = new Fee({ percentage: 0.01, minimum: 25 })
 
-		expect(withoutDate).toEqual([
-			{ close: 960, high: 1170, low: -280, open: 0 },
-			{ close: -620, high: 620, low: -690, open: 620 },
-			{ close: -1240, high: -830, low: -1660, open: -1100 },
-			{ close: 130, high: 620, low: -1380, open: -1240 },
-			{ close: 960, high: 1790, low: -140, open: -140 },
-			{ close: 550, high: 1370, low: 270, open: 1370 },
-			{ close: 550, high: 1030, low: 0, open: 130 },
-			{ close: 960, high: 1100, low: 410, open: 690 },
-			{ close: 1030, high: 1370, low: 200, open: 1100 },
-			{ close: 1370, high: 1510, low: 690, open: 820 },
-			{ close: 1370, high: 1650, low: 1100, open: 1650 },
-			{ close: 1100, high: 1370, low: 130, open: 410 },
-			{ close: 690, high: 1240, low: 0, open: 9100 }
-		])
+		expect(t.entryPrice).toBe(34.43)
+		expect(t.exitPrice).toBe(43.53)
+		t.setFee(fee)
+		expect(t.entryPrice).toBe(35.05421869918699)
+		expect(t.exitPrice).toBe(42.74079756097561)
 	})
+
+	it('calculates total fees', () => {
+		const t = new Trade({
+			entry,
+			exit,
+			quantity: 100
+		})
+
+		const fee = new Fee({ percentage: 0.01, minimum: 25 })
+
+		t.setFee(fee)
+		expect(t.totalFees).toBe(77.96)
+		t.setQuantity(200)
+		expect(t.totalFees).toBe(155.92)
+	})
+
+	it('updates initial- & finalValue after setting fee', () => {
+		const t = new Trade({
+			entry,
+			exit,
+			quantity: 100
+		})
+
+		const fee = new Fee({ percentage: 0.01, minimum: 25 })
+
+		expect(t.initialValue).toBe(3443)
+		expect(t.finalValue).toBe(4353)
+		t.setFee(fee)
+		expect(t.initialValue).toBe(3511.86)
+		expect(t.finalValue).toBe(4265.94)
+	})
+
+	it('Updates results after changing fees', () => {
+		const t = new Trade({
+			entry,
+			exit,
+			quantity: 100
+		})
+
+		const fee = new Fee({ percentage: 0.01, minimum: 25 })
+
+		expect(t.resultPerStock).toBe(9.1)
+		expect(t.resultPercent).toBe(0.2643043857101366)
+		t.setFee(fee)
+		expect(t.resultPerStock).toBe(7.5408)
+		expect(t.resultPercent).toBe(0.21472382156464098)
+	})
+
+	it.todo('Throws if start date is not equal to entry signal date')
+	it.todo('require end date to be equal to exit signal date')
+	it.todo('Creates array with position value throughout the whole trade')
+	it.todo('Calculates p/l for each bar')
 })

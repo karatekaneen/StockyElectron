@@ -1,9 +1,12 @@
+/* eslint-disable indent */
 import _Signal from './Signal'
 
 /**
  * Class to calculate and store data about a particular trade.
  */
 class Trade {
+	#feeInstance = null // create variable to avoid Jest from throwing
+
 	/**
 	 * Creates an instance of a Trade
 	 * @param {Object} params
@@ -16,10 +19,7 @@ class Trade {
 	 * @param {Class} deps.Signal
 	 * @todo Add fees
 	 */
-	constructor({ entry, exit, tradeData, stock, quantity = 1 }, { Signal = _Signal } = {}) {
-		// TODO Add fee calculation class and inject it here
-
-		// Helper methods to validate input
+	constructor({ entry, exit, stock, quantity = 1 }, { Signal = _Signal } = {}) {
 		/**
 		 * Validates that the input is a Signal instance
 		 * @param {Object} s Hopefully a Signal
@@ -27,33 +27,53 @@ class Trade {
 		 */
 		const isSignal = s => s instanceof Signal
 
-		/**
-		 * Checks if two dates are equal. It is required that the tradeData starts on the same date
-		 * as the entry signal and ends on the same as the exit signal.
-		 * @param {Date} d1 Date to check
-		 * @param {Date} d2 Date to check
-		 * @returns {Boolean}
-		 */
-		const areDatesEqual = (d1, d2) => {
-			return d1.getTime() === d2.getTime()
-		}
-
-		if (!isSignal(entry) || !isSignal(exit)) {
-			throw new Error('Entry and exit must be Signal instances')
-		} else if (
-			!areDatesEqual(entry.date, tradeData[0].date) ||
-			!areDatesEqual(exit.date, tradeData[tradeData.length - 1].date)
-		) {
-			throw new Error('Invalid date range')
-		}
-
-		this.entry = entry
-		this.exit = exit
-		this.tradeData = tradeData
+		this.entry = isSignal(entry) ? entry : new Signal(entry)
+		this.exit = isSignal(exit) ? exit : new Signal(exit)
 		this.stock = stock
 		this.quantity = quantity
-		this.resultPerStock = this.roundNumber(exit.price - entry.price)
-		this.resultPercent = exit.price / entry.price - 1
+	}
+
+	get entryPrice() {
+		const price = this.entry.price
+		return this.#feeInstance
+			? price +
+					this.calculatePriceWithFees({
+						price,
+						fee: this.#feeInstance,
+						quantity: this.quantity
+					})
+			: price
+	}
+	get resultPercent() {
+		return this.exitPrice / this.entryPrice - 1
+	}
+
+	get resultPerStock() {
+		return this.roundNumber(this.exitPrice - this.entryPrice)
+	}
+
+	get exitPrice() {
+		const price = this.exit.price
+
+		return this.#feeInstance
+			? price -
+					this.calculatePriceWithFees({
+						price,
+						fee: this.#feeInstance,
+						quantity: this.quantity
+					})
+			: price
+	}
+
+	get totalFees() {
+		if (this.#feeInstance) {
+			return this.roundNumber(
+				this.#feeInstance.calculate(this.entry.price * this.quantity) +
+					this.#feeInstance.calculate(this.exit.price * this.quantity)
+			)
+		}
+
+		return 0
 	}
 
 	/**
@@ -61,39 +81,40 @@ class Trade {
 	 * @returns {Array<Object>} The pricedata between entry and exit in percent
 	 * @todo Make _performancePercent private when able to.
 	 */
-	get performancePercent() {
-		// TODO Make _performancePercent private when able to.
-		if (!this._performancePercent) {
-			this._performancePercent = this.calculatePerformancePercent({
-				entryPrice: this.entry.price,
-				tradeData: this.tradeData
-			})
-		}
-		return this._performancePercent
-	}
+	// get performancePercent() {
+	// 	// TODO Make _performancePercent private when able to.
+	// 	if (!this._performancePercent) {
+	// 		this._performancePercent = this.calculatePerformancePercent({
+	// 			entryPrice: this.entryPrice,
+	// 			tradeData: this.tradeData
+	// 		})
+	// 	}
+	// 	return this._performancePercent
+	// }
 
 	/**
 	 * Returns the performance of the trade in $ while in market.
 	 * @returns {Array<Object>} The pricedata between entry and exit cash
 	 */
-	get performanceCash() {
-		return this.performancePercent.map(pricePoint => {
-			const output = { ...pricePoint }
-			output.open = this.roundNumber(this.entry.price * output.open * this.quantity)
-			output.high = this.roundNumber(this.entry.price * output.high * this.quantity)
-			output.low = this.roundNumber(this.entry.price * output.low * this.quantity)
-			output.close = this.roundNumber(this.entry.price * output.close * this.quantity)
+	// get performanceCash() {
+	// 	// TODO Redo this to fetch data on request
+	// 	return this.performancePercent.map(pricePoint => {
+	// 		const output = { ...pricePoint }
+	// 		output.open = this.roundNumber(this.entryPrice * output.open * this.quantity)
+	// 		output.high = this.roundNumber(this.entryPrice * output.high * this.quantity)
+	// 		output.low = this.roundNumber(this.entryPrice * output.low * this.quantity)
+	// 		output.close = this.roundNumber(this.entryPrice * output.close * this.quantity)
 
-			return output
-		})
-	}
+	// 		return output
+	// 	})
+	// }
 
 	/**
 	 * Calculates the initial position value
 	 * @returns {number} Initial value
 	 */
 	get initialValue() {
-		return this.roundNumber(this.quantity * this.entry.price)
+		return this.roundNumber(this.quantity * this.entryPrice)
 	}
 
 	/**
@@ -101,7 +122,7 @@ class Trade {
 	 * @returns {number} Final value
 	 */
 	get finalValue() {
-		return this.roundNumber(this.quantity * this.exit.price)
+		return this.roundNumber(this.quantity * this.exitPrice)
 	}
 
 	/**
@@ -113,6 +134,42 @@ class Trade {
 	}
 
 	/**
+	 * Set the fee for the trade.
+	 * Using method instad of setter to be able to chain.
+	 * @param {Fee} fee Instance of Fee
+	 * @returns {void}
+	 */
+	setFee(fee) {
+		this.#feeInstance = fee
+
+		return this
+	}
+
+	/**
+	 * Sets the number of stocks and updates stored values
+	 * Using method instad of setter to be able to chain.
+	 * @param {Number} quantity The quantity of stocks traded
+	 * @returns {Trade} this
+	 */
+	setQuantity(quantity) {
+		this.quantity = quantity
+
+		return this
+	}
+
+	/**
+	 * Calculates stock price after fees
+	 * @param {object} params
+	 * @param {number} params.price
+	 * @param {number} params.quantity
+	 * @param {Fee} params.fee Instance of fee, to calculate the fees
+	 * @returns {number} price per stock after fees
+	 */
+	calculatePriceWithFees({ price, fee, quantity }) {
+		return (price + fee.calculate(price * quantity)) / quantity
+	}
+
+	/**
 	 * Calculates the % performance for each bar in market
 	 * @param {Object} params
 	 * @param {Number} params.entryPrice
@@ -120,6 +177,7 @@ class Trade {
 	 * @returns {Array<Object>} The price action while in market in %
 	 */
 	calculatePerformancePercent({ entryPrice, tradeData }) {
+		// TODO Redo this to fetch data on request
 		return tradeData.map(pricePoint => {
 			const output = { ...pricePoint }
 
@@ -130,17 +188,6 @@ class Trade {
 
 			return output
 		})
-	}
-
-	/**
-	 * Sets the number of stocks and updates stored values
-	 * @param {Number} quantity The quantity of stocks traded
-	 * @returns {Trade} this
-	 */
-	setQuantity(quantity) {
-		this.quantity = quantity
-
-		return this
 	}
 
 	/**
