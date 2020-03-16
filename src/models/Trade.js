@@ -169,26 +169,30 @@ class Trade {
 		return (price + fee.calculate(price * quantity)) / quantity
 	}
 
-	/**
-	 * Calculates the % performance for each bar in market
-	 * @param {Object} params
-	 * @param {Number} params.entryPrice
-	 * @param {Array<Object>} params.tradeData The array of price action between entry and exit
-	 * @returns {Array<Object>} The price action while in market in %
-	 */
-	calculatePerformancePercent({ entryPrice, tradeData }) {
-		// TODO Redo this to fetch data on request
-		return tradeData.map(pricePoint => {
-			const output = { ...pricePoint }
-
-			output.open = (pricePoint.open - entryPrice) / entryPrice
-			output.high = (pricePoint.high - entryPrice) / entryPrice
-			output.low = (pricePoint.low - entryPrice) / entryPrice
-			output.close = (pricePoint.close - entryPrice) / entryPrice
-
-			return output
-		})
+	calculateQuantity(amount) {
+		return Math.floor(amount / this.entry.price) // Using the raw entry price to avoid double fees in the calculation
 	}
+
+	// /**
+	//  * Calculates the % performance for each bar in market
+	//  * @param {Object} params
+	//  * @param {Number} params.entryPrice
+	//  * @param {Array<Object>} params.tradeData The array of price action between entry and exit
+	//  * @returns {Array<Object>} The price action while in market in %
+	//  */
+	// calculatePerformancePercent({ entryPrice, tradeData }) {
+	// 	// TODO Redo this to fetch data on request
+	// 	return tradeData.map(pricePoint => {
+	// 		const output = { ...pricePoint }
+
+	// 		output.open = (pricePoint.open - entryPrice) / entryPrice
+	// 		output.high = (pricePoint.high - entryPrice) / entryPrice
+	// 		output.low = (pricePoint.low - entryPrice) / entryPrice
+	// 		output.close = (pricePoint.close - entryPrice) / entryPrice
+
+	// 		return output
+	// 	})
+	// }
 
 	/**
 	 * Converts from the annoying 13-decimal floats.

@@ -205,6 +205,16 @@ describe('Trade', () => {
 		expect(t.resultPercent).toBe(0.21472382156464098)
 	})
 
+	it('Calculates quantity based on amount', () => {
+		const t = new Trade({
+			entry,
+			exit
+		})
+
+		expect(t.calculateQuantity(100000)).toBe(2904)
+		expect(t.calculateQuantity(154654.234645345)).toBe(4491)
+	})
+
 	it.todo('Throws if start date is not equal to entry signal date')
 	it.todo('require end date to be equal to exit signal date')
 	it.todo('Creates array with position value throughout the whole trade')
