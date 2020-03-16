@@ -3,12 +3,9 @@ import _Fee from './Fee'
 
 class Portfolio {
 	// these need to be created to avoid Jest from throwing:
-	#Trade = null
+	// Trade = null
 
-	cashAvailable = 0
-	historicalTrades = []
-	openTrades = []
-	#availableSlots = 0
+	// availableSlots = 0 // TODO Make private when able to
 
 	constructor(
 		{
@@ -21,21 +18,24 @@ class Portfolio {
 		} = {},
 		{ Trade = _Trade, Fee = _Fee } = {}
 	) {
-		this.#Trade = Trade
+		this.Trade = Trade
 
+		this.historicalTrades = []
+		this.openTrades = []
+		this.signalsNotTaken = 0
 		this.startCapital = startCapital
 		this.cashAvailable = startCapital
 		this.maxNumberOfStocks = maxNumberOfStocks
-		this.#availableSlots = maxNumberOfStocks
+		this.availableSlots = maxNumberOfStocks
 		this.selectionMethod = selectionMethod
 		this.fee = fee || new Fee({ percentage: feePercentage, minimum: feeMinimum })
 	}
 
 	get openPositions() {
-		return this.maxNumberOfStocks - this.#availableSlots
+		return this.maxNumberOfStocks - this.availableSlots
 	}
 
-	backtest({ trades, fee = this.fee, Trade = this.#Trade }) {
+	backtest({ trades, fee = this.fee, Trade = this.Trade }) {
 		/*
 		1. Generate date map from signals within trades with object with entry & exit for each date
 		2. Loop over the dates
@@ -66,15 +66,16 @@ class Portfolio {
 				tradesToClose.forEach(trade => {
 					this.historicalTrades.push(trade)
 					this.cashAvailable += trade.finalValue
-					this.#availableSlots++
+					this.availableSlots++
 				})
 
 				currentlyHolding.delete(date)
 			}
 
-			if (this.#availableSlots && entry.length > 0) {
+			if (this.availableSlots && entry.length > 0) {
+				let signalsTaken = 0
 				const tradesToOpen = this.rankSignals(entry, this.selectionMethod)
-					.slice(0, this.#availableSlots)
+					.slice(0, this.availableSlots)
 					.forEach(t => {
 						/*
 						t might be pure JSON if it's loaded from db and not directly from the test.
@@ -86,7 +87,7 @@ class Portfolio {
 						const maxPositionValue = this.calculateMaxPositionValue(
 							this.cashAvailable,
 							fee,
-							this.#availableSlots
+							this.availableSlots
 						)
 
 						const quantity = trade.calculateQuantity(maxPositionValue)
@@ -98,7 +99,8 @@ class Portfolio {
 							this.cashAvailable -= trade.initialValue
 
 							// Remove slot from availability
-							this.#availableSlots--
+							this.availableSlots--
+							signalsTaken++
 
 							const existingTrades = currentlyHolding.get(dateString)
 
@@ -107,6 +109,8 @@ class Portfolio {
 								: currentlyHolding.set(dateString, [trade])
 						}
 					})
+
+				this.signalsNotTaken += entry.length - signalsTaken
 			}
 		})
 
@@ -120,7 +124,7 @@ class Portfolio {
 	 * @param {number} availableSlots Number of open position slots that can be filled
 	 * @returns {number} the max amount to buy a single stock for
 	 */
-	calculateMaxPositionValue(cashAvailable, feeInstance, availableSlots = this.#availableSlots) {
+	calculateMaxPositionValue(cashAvailable, feeInstance, availableSlots = this.availableSlots) {
 		return (cashAvailable - feeInstance.calculate(cashAvailable)) / availableSlots
 	}
 
@@ -136,9 +140,10 @@ class Portfolio {
 	 *
 	 * @todo Refactor to use reference instead?
 	 * @param {Array<Trade>} trades
+	 * @param {Trade} Trade The trade class
 	 * @returns {Map} The trades grouped by dates
 	 */
-	generateSignalMaps(trades) {
+	generateSignalMaps(trades, Trade = this.Trade) {
 		const signalMap = new Map()
 
 		/**
@@ -164,7 +169,8 @@ class Portfolio {
 			}
 		}
 
-		trades.forEach(trade => {
+		trades.forEach(t => {
+			const trade = t instanceof Trade ? t : new Trade(t)
 			// Add the trades to the Map
 			getAndPush(trade, 'entry', trade.entry.date)
 			getAndPush(trade, 'exit', trade.exit.date)

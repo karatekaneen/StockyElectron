@@ -428,6 +428,13 @@ describe('Backtest', () => {
 		p.backtest({ trades: mockTrades })
 		expect(p.cashAvailable).toBe(98369.32)
 	})
+
+	it('Keeps track of number of signals sorted out', () => {
+		const p = new Portfolio({ maxNumberOfStocks: 1 })
+		p.backtest({ trades: mockTrades })
+		expect(p.signalsNotTaken).toBe(1)
+	})
+
 	it.todo('Can handle trades that are still open at end of test')
 	it.todo('Can handle pending signals')
 })

@@ -5,8 +5,6 @@ import _Signal from './Signal'
  * Class to calculate and store data about a particular trade.
  */
 class Trade {
-	#feeInstance = null // create variable to avoid Jest from throwing
-
 	/**
 	 * Creates an instance of a Trade
 	 * @param {Object} params
@@ -35,11 +33,11 @@ class Trade {
 
 	get entryPrice() {
 		const price = this.entry.price
-		return this.#feeInstance
+		return this.feeInstance
 			? price +
 					this.calculatePriceWithFees({
 						price,
-						fee: this.#feeInstance,
+						fee: this.feeInstance,
 						quantity: this.quantity
 					})
 			: price
@@ -55,21 +53,21 @@ class Trade {
 	get exitPrice() {
 		const price = this.exit.price
 
-		return this.#feeInstance
+		return this.feeInstance
 			? price -
 					this.calculatePriceWithFees({
 						price,
-						fee: this.#feeInstance,
+						fee: this.feeInstance,
 						quantity: this.quantity
 					})
 			: price
 	}
 
 	get totalFees() {
-		if (this.#feeInstance) {
+		if (this.feeInstance) {
 			return this.roundNumber(
-				this.#feeInstance.calculate(this.entry.price * this.quantity) +
-					this.#feeInstance.calculate(this.exit.price * this.quantity)
+				this.feeInstance.calculate(this.entry.price * this.quantity) +
+					this.feeInstance.calculate(this.exit.price * this.quantity)
 			)
 		}
 
@@ -140,7 +138,7 @@ class Trade {
 	 * @returns {void}
 	 */
 	setFee(fee) {
-		this.#feeInstance = fee
+		this.feeInstance = fee
 
 		return this
 	}
