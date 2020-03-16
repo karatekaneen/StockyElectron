@@ -1,17 +1,41 @@
+import _Trade from './Trade'
+import _Fee from './Fee'
+
 class Portfolio {
+	// these need to be created to avoid Jest from throwing:
+	#Trade = null
+
 	cashAvailable = 0
 	historicalTrades = []
 	openTrades = []
-	availableSlots = 1
+	#availableSlots = 0
 
-	constructor({ startCapital = 100000, maxNumberOfStocks = 20, selectionMethod = 'random' } = {}) {
+	constructor(
+		{
+			startCapital = 100000,
+			maxNumberOfStocks = 20,
+			selectionMethod = 'random',
+			fee,
+			feePercentage = 0.0025,
+			feeMinimum = 1
+		} = {},
+		{ Trade = _Trade, Fee = _Fee } = {}
+	) {
+		this.#Trade = Trade
+
 		this.startCapital = startCapital
 		this.cashAvailable = startCapital
 		this.maxNumberOfStocks = maxNumberOfStocks
+		this.#availableSlots = maxNumberOfStocks
 		this.selectionMethod = selectionMethod
+		this.fee = fee || new Fee({ percentage: feePercentage, minimum: feeMinimum })
 	}
 
-	backtest({ trades }) {
+	get openPositions() {
+		return this.maxNumberOfStocks - this.#availableSlots
+	}
+
+	backtest({ trades, fee = this.fee, Trade = this.#Trade }) {
 		/*
 		1. Generate date map from signals within trades with object with entry & exit for each date
 		2. Loop over the dates
@@ -30,39 +54,78 @@ class Portfolio {
 		4. Sumarize + analyze portfolio
 		*/
 
-		const currentlyHolding = new Map()
+		// Reset the cash available just in case this isn't the first test ran on this instance
+		this.cashAvailable = this.startCapital
 
+		const currentlyHolding = new Map()
 		const signalMap = this.generateSignalMaps(trades)
 
 		signalMap.forEach(({ entry, exit }, date) => {
-			if (currentlyHolding.has(date)) {
-				// TODO this.closeTrades(currentlyHolding.get(date))
-				// TODO Ta bort currentlyHolding[date]
+			const tradesToClose = currentlyHolding.get(date)
+			if (tradesToClose) {
+				tradesToClose.forEach(trade => {
+					this.historicalTrades.push(trade)
+					this.cashAvailable += trade.finalValue
+					this.#availableSlots++
+				})
+
+				currentlyHolding.delete(date)
 			}
 
-			if (this.availableSlots) {
-				const tradesToOpen = this.rankSignals(entry)
-					.slice(0, this.availableSlots)
-					.forEach(trade => {
+			if (this.#availableSlots && entry.length > 0) {
+				const tradesToOpen = this.rankSignals(entry, this.selectionMethod)
+					.slice(0, this.#availableSlots)
+					.forEach(t => {
+						/*
+						t might be pure JSON if it's loaded from db and not directly from the test.
+						Then it needs to be instantiated to be able to use the Trade class' methods.
+						*/
+						const trade = t instanceof Trade ? t : new Trade(t)
 						const dateString = trade.exit.date.toISOString()
 
-						// TODO Calculate quantity here
-						// TODO only continue if quantity > 0 (this can maybe favour stocks with lower prices, wanted behavior?)
-						// TODO "withdraw" cash here
+						const maxPositionValue = this.calculateMaxPositionValue(
+							this.cashAvailable,
+							fee,
+							this.#availableSlots
+						)
 
-						const existingTrades = currentlyHolding.get(dateString)
+						const quantity = trade.calculateQuantity(maxPositionValue)
 
-						existingTrades
-							? currentlyHolding.set(dateString, [...existingTrades, trade])
-							: currentlyHolding.set(dateString, [trade])
+						if (quantity > 0) {
+							trade.setQuantity(quantity)
+
+							// "Withdraw cash"
+							this.cashAvailable -= trade.initialValue
+
+							// Remove slot from availability
+							this.#availableSlots--
+
+							const existingTrades = currentlyHolding.get(dateString)
+
+							existingTrades
+								? currentlyHolding.set(dateString, [...existingTrades, trade])
+								: currentlyHolding.set(dateString, [trade])
+						}
 					})
 			}
 		})
+
+		this.openTrades = currentlyHolding
 	}
 
-	rankSignals(trades) {
+	/**
+	 * Calculates the max amount to spend on a position.
+	 * @param {number} cashAvailable The max amount of cash available
+	 * @param {Fee} feeInstance Instance of Fee
+	 * @param {number} availableSlots Number of open position slots that can be filled
+	 * @returns {number} the max amount to buy a single stock for
+	 */
+	calculateMaxPositionValue(cashAvailable, feeInstance, availableSlots = this.#availableSlots) {
+		return (cashAvailable - feeInstance.calculate(cashAvailable)) / availableSlots
+	}
+
+	rankSignals(trades, selectionMethod) {
 		// TODO Make proper implementation
-		// TODO add selectiontype to signature
 		return trades
 	}
 
@@ -86,7 +149,6 @@ class Portfolio {
 		 * @returns {void}
 		 */
 		const getAndPush = (trade, type, date) => {
-			// TODO Extract to own function when private is available?
 			if (signalMap.has(date.toISOString())) {
 				const signals = signalMap.get(date.toISOString())
 				signals[type].push(trade)
@@ -108,7 +170,7 @@ class Portfolio {
 			getAndPush(trade, 'exit', trade.exit.date)
 		})
 
-		const sortedSignalArr = [...signalMap.entries()].sort(([first, x], [second, y]) =>
+		const sortedSignalArr = [...signalMap.entries()].sort(([first], [second]) =>
 			new Date(first) < new Date(second) ? -1 : 1
 		)
 
