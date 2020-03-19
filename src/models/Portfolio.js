@@ -140,11 +140,16 @@ class Portfolio {
 		}
 
 		if (selectionMethod === 'best') {
-			return [...trades].sort((a, b) => b - a).slice(0, availableSlots)
+			const output = [...trades]
+				.sort((a, b) => b.resultPercent - a.resultPercent)
+				.slice(0, availableSlots)
+			return output
 		}
 
 		if (selectionMethod === 'worst') {
-			return [...trades].sort((a, b) => a - b).slice(0, availableSlots)
+			return [...trades]
+				.sort((a, b) => a.resultPercent - b.resultPercent)
+				.slice(0, availableSlots)
 		}
 		// TODO Make proper implementation
 		return trades

@@ -503,21 +503,33 @@ describe('Rank Signals', () => {
 	})
 
 	it('Returns the best trades when selectionmethod is "best"', () => {
-		const array = new Array(100).fill(0).map((_, i) => i)
+		const array = new Array(100).fill(0).map((_, i) => ({ resultPercent: i }))
 		array.sort((a, b) => 0.5 - Math.random())
 		const p = new Portfolio()
 
 		const resp = p.rankSignals(array, 'best', 5)
-		expect(resp).toEqual([99, 98, 97, 96, 95])
+		expect(resp).toEqual([
+			{ resultPercent: 99 },
+			{ resultPercent: 98 },
+			{ resultPercent: 97 },
+			{ resultPercent: 96 },
+			{ resultPercent: 95 }
+		])
 	})
 
 	it('Returns the worst trades when selectionmethod is "worst"', () => {
-		const array = new Array(100).fill(0).map((_, i) => i)
+		const array = new Array(100).fill(0).map((_, i) => ({ resultPercent: i }))
 		array.sort((a, b) => 0.5 - Math.random())
 		const p = new Portfolio()
 
 		const resp = p.rankSignals(array, 'worst', 5)
-		expect(resp).toEqual([0, 1, 2, 3, 4])
+		expect(resp).toEqual([
+			{ resultPercent: 0 },
+			{ resultPercent: 1 },
+			{ resultPercent: 2 },
+			{ resultPercent: 3 },
+			{ resultPercent: 4 }
+		])
 	})
 
 	it('returns original array if length is <= availableSlots', () => {
