@@ -130,6 +130,16 @@ class Portfolio {
 		return (cashAvailable - feeInstance.calculate(cashAvailable)) / availableSlots
 	}
 
+	/**
+	 * Ranks trades according to the selectionMethod.
+	 * * Note that Best & Worst should _only_ be used for testing purposes
+	 *
+	 * @todo Make proper implementation when signals have ranking factors built in.
+	 * @param {Array<Trade>} trades The trades to choose from
+	 * @param {string} selectionMethod How to pick the trades
+	 * @param {number} availableSlots The maximum number of trades to take
+	 * @returns {Array<Trade>} The selected trades
+	 */
 	rankSignals(trades, selectionMethod, availableSlots) {
 		if (trades.length <= availableSlots) {
 			return trades
