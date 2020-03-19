@@ -74,41 +74,43 @@ class Portfolio {
 
 			if (this.availableSlots && entry.length > 0) {
 				let signalsTaken = 0
-				const tradesToOpen = this.rankSignals(entry, this.selectionMethod)
-					.slice(0, this.availableSlots)
-					.forEach(t => {
-						/*
+				const tradesToOpen = this.rankSignals(
+					entry,
+					this.selectionMethod,
+					this.availableSlots
+				).forEach(t => {
+					/*
 						t might be pure JSON if it's loaded from db and not directly from the test.
 						Then it needs to be instantiated to be able to use the Trade class' methods.
 						*/
-						const trade = t instanceof Trade ? t : new Trade(t)
-						const dateString = trade.exit.date.toISOString()
+					const trade = t instanceof Trade ? t : new Trade(t)
+					const dateString = trade.exit.date.toISOString()
 
-						const maxPositionValue = this.calculateMaxPositionValue(
-							this.cashAvailable,
-							fee,
-							this.availableSlots
-						)
+					const maxPositionValue = this.calculateMaxPositionValue(
+						this.cashAvailable,
+						fee,
+						this.availableSlots
+					)
 
-						const quantity = trade.calculateQuantity(maxPositionValue)
+					const quantity = trade.calculateQuantity(maxPositionValue)
 
-						if (quantity > 0) {
-							trade.setQuantity(quantity)
+					if (quantity > 0) {
+						trade.setQuantity(quantity)
 
-							// "Withdraw cash"
-							this.cashAvailable -= trade.initialValue
+						// "Withdraw cash"
+						this.cashAvailable -= trade.initialValue
 
-							// Remove slot from availability
-							this.availableSlots--
-							signalsTaken++
+						// Remove slot from availability
+						this.availableSlots--
+						signalsTaken++
 
-							const existingTrades = currentlyHolding.get(dateString)
+						const existingTrades = currentlyHolding.get(dateString)
 
-							existingTrades
-								? currentlyHolding.set(dateString, [...existingTrades, trade])
-								: currentlyHolding.set(dateString, [trade])
-						}
-					})
+						existingTrades
+							? currentlyHolding.set(dateString, [...existingTrades, trade])
+							: currentlyHolding.set(dateString, [trade])
+					}
+				})
 
 				this.signalsNotTaken += entry.length - signalsTaken
 			}
@@ -128,7 +130,22 @@ class Portfolio {
 		return (cashAvailable - feeInstance.calculate(cashAvailable)) / availableSlots
 	}
 
-	rankSignals(trades, selectionMethod) {
+	rankSignals(trades, selectionMethod, availableSlots) {
+		if (trades.length <= availableSlots) {
+			return trades
+		}
+
+		if (selectionMethod === 'random') {
+			return [...trades].sort((a, b) => 0.5 - Math.random()).slice(0, availableSlots)
+		}
+
+		if (selectionMethod === 'best') {
+			return [...trades].sort((a, b) => b - a).slice(0, availableSlots)
+		}
+
+		if (selectionMethod === 'worst') {
+			return [...trades].sort((a, b) => a - b).slice(0, availableSlots)
+		}
 		// TODO Make proper implementation
 		return trades
 	}

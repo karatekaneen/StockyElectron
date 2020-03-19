@@ -494,5 +494,38 @@ describe('calculateMaxPositionValue', () => {
 })
 
 describe('Rank Signals', () => {
-	it.todo('needs tests')
+	it('Shuffles order if selectionMethod is random', () => {
+		const array = new Array(100).fill(0).map((_, i) => i)
+		const p = new Portfolio()
+
+		const resp = p.rankSignals(array, 'random', 50)
+		expect(resp).not.toEqual(array.slice(0, 50))
+	})
+
+	it('Returns the best trades when selectionmethod is "best"', () => {
+		const array = new Array(100).fill(0).map((_, i) => i)
+		array.sort((a, b) => 0.5 - Math.random())
+		const p = new Portfolio()
+
+		const resp = p.rankSignals(array, 'best', 5)
+		expect(resp).toEqual([99, 98, 97, 96, 95])
+	})
+
+	it('Returns the worst trades when selectionmethod is "worst"', () => {
+		const array = new Array(100).fill(0).map((_, i) => i)
+		array.sort((a, b) => 0.5 - Math.random())
+		const p = new Portfolio()
+
+		const resp = p.rankSignals(array, 'worst', 5)
+		expect(resp).toEqual([0, 1, 2, 3, 4])
+	})
+
+	it('returns original array if length is <= availableSlots', () => {
+		const array = new Array(100).fill(0).map((_, i) => i)
+		array.sort((a, b) => 0.5 - Math.random())
+		const p = new Portfolio()
+
+		expect(p.rankSignals(array, 'random', 99)).not.toEqual(array)
+		expect(p.rankSignals(array, 'random', 100)).toEqual(array)
+	})
 })
