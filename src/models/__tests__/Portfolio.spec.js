@@ -163,8 +163,7 @@ describe('Backtest', () => {
 
 		expect(p.calculateMaxPositionValue.mock.calls[0][0]).toEqual(100000)
 	})
-	/*
-	TODO This test needs logic for closing positions to be able to work properly
+
 	it('Can buy cheaper stock if there isnt room for more expensive', () => {
 		const diversePricedStocks = [
 			{
@@ -259,9 +258,10 @@ describe('Backtest', () => {
 		p.calculateMaxPositionValue = jest.fn(p.calculateMaxPositionValue)
 
 		const resp = p.backtest({ trades: diversePricedStocks })
-		expect([...p.openTrades]).toEqual(null)
+		expect(p.historicalTrades.length).toEqual(1)
+		expect(p.historicalTrades[0].entryPrice).toBe(110.47) // only bought the cheap stock
 	})
-	*/
+
 	it('Withdraws cash on entry', () => {
 		const tradeWithoutExit = new Trade({
 			entry: {
@@ -503,8 +503,10 @@ describe('Rank Signals', () => {
 	})
 
 	it('Returns the best trades when selectionmethod is "best"', () => {
-		const array = new Array(100).fill(0).map((_, i) => ({ resultPercent: i }))
-		array.sort((a, b) => 0.5 - Math.random())
+		const array = new Array(100)
+			.fill(0)
+			.map((_, i) => ({ resultPercent: i }))
+			.sort((a, b) => 0.5 - Math.random())
 		const p = new Portfolio()
 
 		const resp = p.rankSignals(array, 'best', 5)
@@ -518,8 +520,10 @@ describe('Rank Signals', () => {
 	})
 
 	it('Returns the worst trades when selectionmethod is "worst"', () => {
-		const array = new Array(100).fill(0).map((_, i) => ({ resultPercent: i }))
-		array.sort((a, b) => 0.5 - Math.random())
+		const array = new Array(100)
+			.fill(0)
+			.map((_, i) => ({ resultPercent: i }))
+			.sort((a, b) => 0.5 - Math.random())
 		const p = new Portfolio()
 
 		const resp = p.rankSignals(array, 'worst', 5)
@@ -533,8 +537,10 @@ describe('Rank Signals', () => {
 	})
 
 	it('returns original array if length is <= availableSlots', () => {
-		const array = new Array(100).fill(0).map((_, i) => i)
-		array.sort((a, b) => 0.5 - Math.random())
+		const array = new Array(100)
+			.fill(0)
+			.map((_, i) => i)
+			.sort((a, b) => 0.5 - Math.random())
 		const p = new Portfolio()
 
 		expect(p.rankSignals(array, 'random', 99)).not.toEqual(array)
