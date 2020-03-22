@@ -435,8 +435,52 @@ describe('Backtest', () => {
 		expect(p.signalsNotTaken).toBe(1)
 	})
 
+	it('Calls to generate timeline if there are any trades', () => {
+		const p = new Portfolio()
+
+		p.generateTimeline = jest.fn()
+
+		p.backtest({ trades: mockTrades })
+
+		expect(p.generateTimeline).toHaveBeenCalledTimes(1)
+		expect(p.generateTimeline.mock.calls[0][0].firstTrade.entry.price).toBe(
+			mockTrades[0].entry.price
+		)
+	})
+
+	it('Does not call to generate timeline if there isnt any trades', () => {
+		const p = new Portfolio()
+		p.generateTimeline = jest.fn()
+		p.generateSignalMaps = jest.fn().mockReturnValue(new Map())
+
+		p.backtest({ trades: mockTrades })
+
+		expect(p.generateTimeline).toHaveBeenCalledTimes(0)
+	})
+
+	it('Records each change of cashAvailable', () => {
+		const p = new Portfolio()
+		p.backtest({ trades: mockTrades })
+		expect([...p.timeline.entries()]).toEqual([
+			['2019-01-20T15:16:36.143Z', { cashAvailable: 95108.8 }],
+			['2020-01-19T15:16:36.143Z', { cashAvailable: 90760.42000000001 }],
+			['2020-02-19T15:16:36.143Z', { cashAvailable: 94514.17000000001 }],
+			['2021-02-19T15:16:36.143Z', { cashAvailable: 98369.32 }]
+		])
+	})
+
 	it.todo('Can handle trades that are still open at end of test')
 	it.todo('Can handle pending signals')
+})
+
+describe('Generate Timeline', () => {
+	it.todo('Calls to generate an entry for each date since the first entry')
+	it.todo('Calls to group trades by stock ID')
+	it.todo('Loops over each trade and adding its value and p/l for each date')
+	it.todo('Carries cashAvailable from the previous day')
+	it.todo('Allows for changes in cashAvailable')
+	it.todo('Keeps track of how many positions open for each day')
+	it.todo('Keeps track of percentage invested = positionValues/(position values + cashAvailable)')
 })
 
 describe('generateSignalMaps', () => {

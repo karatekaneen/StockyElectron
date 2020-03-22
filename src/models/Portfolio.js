@@ -21,6 +21,7 @@ class Portfolio {
 		this.Trade = Trade
 
 		this.historicalTrades = []
+		this.timeline = new Map()
 		this.openTrades = []
 		this.signalsNotTaken = 0
 		this.startCapital = startCapital
@@ -114,7 +115,14 @@ class Portfolio {
 
 				this.signalsNotTaken += entry.length - signalsTaken
 			}
+
+			this.timeline.set(date, { cashAvailable: this.cashAvailable })
 		})
+
+		if (signalMap.size > 0) {
+			const firstTrade = signalMap.values().next().value.entry[0] // Get the first entry to know from where to fetch data
+			this.generateTimeline({ firstTrade })
+		}
 
 		this.openTrades = currentlyHolding
 	}
@@ -163,6 +171,11 @@ class Portfolio {
 		}
 		// TODO Make proper implementation
 		return trades
+	}
+
+	generateTimeline({ trades = this.historicalTrades, timeline = this.timeline, firstTrade }) {
+		// TODO make proper implementation
+		return 'Make proper implementation'
 	}
 
 	/**
