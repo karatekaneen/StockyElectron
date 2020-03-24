@@ -15,7 +15,6 @@ class Trade {
 	 * @param {Number} params.quantity The number of shares
 	 * @param {Object} deps
 	 * @param {Class} deps.Signal
-	 * @todo Add fees
 	 */
 	constructor({ entry, exit, stock, quantity = 1 }, { Signal = _Signal } = {}) {
 		/**
