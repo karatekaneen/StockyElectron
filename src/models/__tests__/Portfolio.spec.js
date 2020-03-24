@@ -1,6 +1,10 @@
 import Portfolio from '../Portfolio'
 import Trade from '../Trade'
 import Fee from '../Fee'
+import Stock from '../Stock'
+import mockStock from './__mocks__/mockstock.json'
+import DataFetcher from '../../backendModules/DataFetcher'
+jest.mock('../../backendModules/DataFetcher')
 
 const mockTrades = [
 	{
@@ -78,7 +82,7 @@ const mockTrades = [
 			status: 'executed'
 		},
 		stock: {
-			id: 5277,
+			id: 6423,
 			name: 'Bure Equity',
 			list: 'Mid Cap Stockholm',
 			lastPricePoint: null,
@@ -133,6 +137,11 @@ const mockTrades = [
 		resultPercent: -0.24996253559118842
 	}
 ]
+
+beforeEach(() => {
+	// Clear all instances and calls to constructor and all methods:
+	jest.clearAllMocks()
+})
 
 describe('Backtest', () => {
 	it('Calls to generate signal map', () => {
@@ -474,13 +483,71 @@ describe('Backtest', () => {
 })
 
 describe('Generate Timeline', () => {
-	it.todo('Calls to generate an entry for each date since the first entry')
-	it.todo('Calls to group trades by stock ID')
+	it('Calls to generate an entry for each date since the first entry', async () => {
+		const p = new Portfolio()
+		p.getDateMap = jest.fn().mockReturnValue(new Map())
+		const firstTrade = new Trade(mockTrades[0])
+
+		await p.generateTimeline({ trades: [], timeline: new Map(), firstTrade })
+
+		expect(p.getDateMap).toHaveBeenCalledWith(firstTrade)
+	})
+
+	it('Calls to group trades by stock ID', async () => {
+		const p = new Portfolio()
+		p.getDateMap = jest.fn().mockReturnValue(new Map())
+		p.groupTradesByStock = jest.fn().mockReturnValue(new Map())
+		const firstTrade = new Trade(mockTrades[0])
+
+		await p.generateTimeline({ trades: mockTrades, timeline: new Map(), firstTrade })
+
+		expect(p.groupTradesByStock).toHaveBeenCalledWith(mockTrades)
+	})
 	it.todo('Loops over each trade and adding its value and p/l for each date')
 	it.todo('Carries cashAvailable from the previous day')
 	it.todo('Allows for changes in cashAvailable')
 	it.todo('Keeps track of how many positions open for each day')
 	it.todo('Keeps track of percentage invested = positionValues/(position values + cashAvailable)')
+})
+
+describe('Group trades by stock', () => {
+	it('Groups trades by their IDs', () => {
+		const p = new Portfolio()
+		const resp = p.groupTradesByStock(mockTrades.map(t => new Trade(t)))
+		expect([...resp.keys()]).toEqual([5277, 6423])
+	})
+
+	it('Can handle an empty array', () => {
+		const p = new Portfolio()
+		const resp = p.groupTradesByStock([])
+		expect([...resp.keys()]).toEqual([])
+	})
+})
+
+describe('Get Date Map', () => {
+	it('Creates a DataFetcher', async () => {
+		const p = new Portfolio()
+		await p.getDateMap({ stock: { id: 123 } }, DataFetcher)
+		expect(DataFetcher).toHaveBeenCalledTimes(1)
+	})
+
+	it('Fetches the data from the stock that was the first trade', async () => {
+		const p = new Portfolio()
+		await p.getDateMap({ stock: { id: 123 } }, DataFetcher)
+		expect(DataFetcher.mock.instances[0].fetchStock).toHaveBeenCalledWith({
+			fieldString: 'priceData{ date }',
+			id: 123
+		})
+	})
+
+	it('Converts the priceData array to a map of dates', async () => {
+		const p = new Portfolio()
+		const fetchStock = jest.fn().mockResolvedValue(new Stock({ data: mockStock }))
+		DataFetcher.mockImplementationOnce(() => ({ fetchStock }))
+		const resp = await p.getDateMap({ stock: { id: 123 } }, DataFetcher)
+
+		expect(resp.size).toBe(5027)
+	})
 })
 
 describe('generateSignalMaps', () => {

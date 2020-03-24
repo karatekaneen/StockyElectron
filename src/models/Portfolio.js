@@ -1,5 +1,6 @@
 import _Trade from './Trade'
 import _Fee from './Fee'
+import _DataFetcher from '../backendModules/DataFetcher'
 
 class Portfolio {
 	// these need to be created to avoid Jest from throwing:
@@ -16,9 +17,10 @@ class Portfolio {
 			feePercentage = 0.0025,
 			feeMinimum = 1
 		} = {},
-		{ Trade = _Trade, Fee = _Fee } = {}
+		{ Trade = _Trade, Fee = _Fee, DataFetcher = _DataFetcher } = {}
 	) {
 		this.Trade = Trade
+		this.DataFetcher = DataFetcher
 
 		this.historicalTrades = []
 		this.timeline = new Map()
@@ -173,9 +175,65 @@ class Portfolio {
 		return trades
 	}
 
-	generateTimeline({ trades = this.historicalTrades, timeline = this.timeline, firstTrade }) {
+	async generateTimeline({
+		trades = this.historicalTrades,
+		timeline = this.timeline,
+		firstTrade
+	}) {
+		const dateMap = this.getDateMap(firstTrade)
+
+		// Group the stocks by id to only have to fetch the data once more.
+		const groupedTrades = this.groupTradesByStock(trades)
 		// TODO make proper implementation
 		return 'Make proper implementation'
+	}
+
+	/**
+	 * Groups a bunch of trades based on the stocks's ID.
+	 * This allows us to add all the data about the trades in that particular stock
+	 * in one go and only need to hit the API one extra time for each stock.
+	 *
+	 * @param {Array<Trade>} trades The trades to group
+	 * @returns {Map} The trades with the stock id as key
+	 */
+	groupTradesByStock(trades) {
+		const stockMap = new Map()
+
+		trades.forEach(trade => {
+			const existingTrades = stockMap.get(trade.stock.id)
+			existingTrades
+				? stockMap.set(trade.stock.id, [...existingTrades, trade])
+				: stockMap.set(trade.stock.id, [trade])
+		})
+
+		return stockMap
+	}
+
+	/**
+	 * Generates a map with all the dates since the first trade was taken.
+	 * It has empty objects as values.
+	 * @param {Trade} firstTrade The first trade taken in the backtest, which is the base for the Map at the moment.
+	 * @param {object} deps dependencies
+	 * @param {DataFetcher} deps.DataFetcher The DataFetcher class
+	 * @returns {Map|null}
+	 */
+	async getDateMap(firstTrade, { DataFetcher = this.DataFetcher } = {}) {
+		// * Using a naïve approach and assuming that the stock that was the first trade hasn't been delisted.
+		// TODO Remake this to use an index instead when able to.
+		const df = new DataFetcher()
+
+		const stock = await df.fetchStock({
+			id: firstTrade.stock.id,
+			fieldString: 'priceData{ date }'
+		})
+
+		if (!stock) {
+			return null
+		}
+
+		const kvArray = stock.priceData.map(({ date }) => [date.toISOString(), {}])
+
+		return new Map(kvArray)
 	}
 
 	/**
