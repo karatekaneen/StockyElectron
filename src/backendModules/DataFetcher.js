@@ -2,8 +2,12 @@ import _axios from 'axios'
 import Stock from '../models/Stock'
 import _fs from 'fs'
 
-export class DataFetcher {
-	constructor({ axios = _axios, API_URL, fs = _fs.promises }) {
+class DataFetcher {
+	constructor({
+		axios = _axios,
+		API_URL = 'http://localhost:4000/graphql?', // TODO Make API_URL an env-variable
+		fs = _fs.promises
+	} = {}) {
 		this.API_URL = API_URL
 		this.axios = axios
 		this.fs = fs
@@ -36,7 +40,6 @@ export class DataFetcher {
 			}
 		}`
 		const { data } = await this.axios.post(this.API_URL, { query })
-		console.log(data)
 		return data.data.stocks
 	}
 
@@ -54,3 +57,5 @@ export class DataFetcher {
 		return data.data.stocks.map(stock => new Stock({ data: stock }))
 	}
 }
+
+export default DataFetcher
