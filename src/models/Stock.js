@@ -2,6 +2,7 @@ import _DataSeries from './DataSeries'
 
 export default class Stock {
 	constructor({ DataSeries = _DataSeries, data = {} }) {
+		// TODO This is a really stupid signature, refactor this.
 		// Add deps:
 		this.DataSeries = DataSeries
 
@@ -14,7 +15,7 @@ export default class Stock {
 		this.linkName = linkName || null
 
 		if (priceData) {
-			if (priceData[0].hasOwnProperty('time')) {
+			if (priceData[0].hasOwnProperty('time') && priceData[0].date instanceof Date) {
 				this.priceData = priceData
 			} else {
 				this.priceData = this.dateToTime(priceData)
@@ -41,6 +42,7 @@ export default class Stock {
 	}
 
 	createLineSeries(field = 'close') {
+		// TODO De-nest this baby with some early returns
 		if (this.priceData) {
 			const okFields = ['open', 'close', 'high', 'low', 'volume', 'owners']
 			if (!okFields.includes(field)) {
@@ -73,20 +75,21 @@ export default class Stock {
 	 */
 	dateToTime(priceData) {
 		return priceData.map(pricePoint => {
-			if (!pricePoint.date) throw new Error('Date is required')
-			else {
-				const d = new Date(pricePoint.date)
-
-				// Helper function to always get two-digit month and days, i.e. 01 instead of 1 for january.
-				const pad = num => (num < 10 ? num.toString().padStart(2, '0') : num.toString())
-
-				const month = pad(d.getMonth() + 1)
-				const date = pad(d.getDate())
-				pricePoint.time = `${d.getFullYear()}-${month}-${date}`
-				pricePoint.date = d
-
-				return pricePoint
+			if (!pricePoint.date) {
+				throw new Error('Date is required')
 			}
+
+			const d = new Date(pricePoint.date)
+
+			// Helper function to always get two-digit month and days, i.e. 01 instead of 1 for january.
+			const pad = num => (num < 10 ? num.toString().padStart(2, '0') : num.toString())
+
+			const month = pad(d.getMonth() + 1)
+			const date = pad(d.getDate())
+			pricePoint.time = `${d.getFullYear()}-${month}-${date}`
+			pricePoint.date = d
+
+			return pricePoint
 		})
 	}
 }
