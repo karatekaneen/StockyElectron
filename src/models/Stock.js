@@ -3,7 +3,7 @@ import _DataSeries from './DataSeries'
 export default class Stock {
 	constructor({ DataSeries = _DataSeries, data = {} }) {
 		// Add deps:
-		this.DataSeries = _DataSeries
+		this.DataSeries = DataSeries
 
 		// Assign data:
 		const { id, name, list, priceData, lastPricePoint, linkName } = data
