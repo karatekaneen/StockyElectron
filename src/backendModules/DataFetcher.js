@@ -9,6 +9,13 @@ export class DataFetcher {
 		this.fs = fs
 	}
 
+	/**
+	 * Fetches single stock and the data specified
+	 * @param {object} params
+	 * @param {string} params.id id of the stock to fetch
+	 * @param {string} params.fieldString The graphQL query string
+	 * @returns {Stock} The data as an instance of Stock
+	 */
 	async fetchStock({
 		id,
 		fieldString = 'id, name, list, priceData{open, high, low, close, date}'
