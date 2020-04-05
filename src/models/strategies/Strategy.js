@@ -232,7 +232,6 @@ class Strategy {
 	 * Converts all of the raw signals into an array of Trades to be more easily parsable later on.
 	 * @param {Object} params
 	 * @param {Array<Signal>} params.signals All the signals from the test
-	 * @param {Array<Object>} params.priceData All the pricedata for this stock
 	 * @param {Signal|null} params.closeOpenPosition The signal generated to keep track of open profit/loss
 	 * @param {String} params.openPositionPolicy How the open positions should be handled at the end of the test
 	 * @param {Object} deps
@@ -240,13 +239,7 @@ class Strategy {
 	 * @returns {Array<Trade>} List of trades.
 	 */
 	summarizeSignals(
-		{
-			signals,
-			priceData,
-			closeOpenPosition,
-			openPositionPolicy = this.openPositionPolicy,
-			stock
-		},
+		{ signals, closeOpenPosition, openPositionPolicy = this.openPositionPolicy, stock },
 		{ Trade = this.Trade } = {}
 	) {
 		const numberOfSignals = signals.length
@@ -265,12 +258,9 @@ class Strategy {
 		// Group the entries and exits together
 		const groupedSignals = this.groupSignals({ signals, closeOpenPosition })
 
-		// Add the data between entry and exit
-		const groupedSignalsWithPriceData = this.assignPriceData({ groupedSignals, priceData })
-
 		// Convert the signal groups to Trade instances
-		const trades = groupedSignalsWithPriceData.map(({ entrySignal, exitSignal, tradeData }) => {
-			return new Trade({ entry: entrySignal, exit: exitSignal, tradeData, stock })
+		const trades = groupedSignals.map(({ entrySignal, exitSignal }) => {
+			return new Trade({ entry: entrySignal, exit: exitSignal, stock })
 		})
 
 		// If the policy is to exclude open positions from result, pop the last item
@@ -279,36 +269,6 @@ class Strategy {
 		}
 
 		return trades
-	}
-
-	/**
-	 * Takes a nested array of signals (entry and exit) and all of the pricedata and attaches all the price
-	 * data between entry and exit to the signals. It is returned as an array of objects instead of nested array.
-	 * @param {Object} params
-	 * @param {Array<Array<Signal>>} params.groupedSignals Grouped signals with entry and exit
-	 * @param {Array<Object>} params.priceData The pricedata from the stock where the signals were generated.
-	 * @returns {Array<Object} Outputs object with `entrySignal`, `exitSignal` and `tradeData` which is the pricedata between entry and exit
-	 */
-	assignPriceData({ groupedSignals, priceData }) {
-		let priceClone = [...priceData]
-
-		const signalsWithPriceData = groupedSignals.map(([entrySignal, exitSignal]) => {
-			const { startIndex, endIndex } = this.extractData({
-				priceData: priceClone,
-				startDate: entrySignal.date,
-				endDate: exitSignal.date
-			})
-
-			// Get all the data that was produced during the trade
-			const tradeData = priceClone.slice(startIndex, endIndex + 1)
-
-			// Update the data array to have to search less data next time
-			priceClone = priceClone.slice(endIndex)
-
-			return { entrySignal, exitSignal, tradeData }
-		})
-
-		return signalsWithPriceData
 	}
 
 	/**
