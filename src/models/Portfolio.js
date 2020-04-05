@@ -1,6 +1,7 @@
 import _Trade from './Trade'
 import _Fee from './Fee'
 import _DataFetcher from '../backendModules/DataFetcher'
+import _queue from '../utils/queue'
 
 class Portfolio {
 	// these need to be created to avoid Jest from throwing:
@@ -17,10 +18,11 @@ class Portfolio {
 			feePercentage = 0.0025,
 			feeMinimum = 1
 		} = {},
-		{ Trade = _Trade, Fee = _Fee, DataFetcher = _DataFetcher } = {}
+		{ Trade = _Trade, Fee = _Fee, DataFetcher = _DataFetcher, queue = _queue } = {}
 	) {
 		this.Trade = Trade
 		this.DataFetcher = DataFetcher
+		this.queue = queue
 
 		this.historicalTrades = []
 		this.timeline = new Map()
@@ -178,14 +180,82 @@ class Portfolio {
 	async generateTimeline({
 		trades = this.historicalTrades,
 		timeline = this.timeline,
-		firstTrade
+		firstTrade,
+		queue = this.queue,
+		DataFetcher = this.DataFetcher
 	}) {
-		const dateMap = this.getDateMap(firstTrade)
+		const dateMap = await this.getDateMap(firstTrade)
+
+		timeline.forEach(({ cashAvailable }, key) => {
+			if (cashAvailable) {
+				dateMap.set(key, { ...dateMap.get(key), cashAvailable })
+			}
+		})
+
+		// Generate the cashAvailable for each day:
+		let cashAvailable = this.startCapital
+
+		dateMap.forEach((value, key) => {
+			if (value.cashAvailable) {
+				cashAvailable = value.cashAvailable
+				value.total = cashAvailable
+			} else {
+				value.cashAvailable = cashAvailable
+				value.total = cashAvailable
+			}
+			dateMap.set(key, value)
+		})
 
 		// Group the stocks by id to only have to fetch the data once more.
 		const groupedTrades = this.groupTradesByStock(trades)
+
+		const client = new DataFetcher()
+
+		// Loop over the grouped trades and generate tasks (that are functions to be called in the queue)
+		const tasks = [...groupedTrades.entries()].map(([id, tradesInStock]) => async () => {
+			// Get the price data
+			const stockdata = await client.fetchStock({ id, fieldString: 'priceData{ date, close }' })
+
+			tradesInStock.forEach(trade =>
+				trade
+					.getTradePerformance(stockdata)
+					.forEach(({ date, value }) => this.checkAndAddValues(date, value, dateMap))
+			)
+		})
+
+		await queue(tasks, 10)
+
+		console.log(tasks)
+
 		// TODO make proper implementation
-		return 'Make proper implementation'
+		return dateMap
+	}
+
+	/**
+	 * Adds the data about the trade to the particular date.
+	 * @param {Date} date the date to add the data to
+	 * @param {number} value The position value on this particular date
+	 * @param {Map} dateMap The map to add the data to
+	 * @returns {void} only calls methods on the Map instance
+	 */
+	checkAndAddValues(date, value, dateMap) {
+		const existingData = dateMap.get(date.toISOString())
+
+		// Check if the value exists (it won't for the first day) and then add the value
+		existingData.totalPositionValue = existingData.totalPositionValue
+			? existingData.totalPositionValue + value
+			: value
+
+		// Check and add number of positions
+		existingData.numberOfPositionsOpen = existingData.numberOfPositionsOpen
+			? existingData.numberOfPositionsOpen + 1
+			: 1
+
+		// Total does always exist so no need to check that:
+		existingData.total += value
+
+		// Write the new data back to the map
+		dateMap.set(date.toISOString(), existingData)
 	}
 
 	/**

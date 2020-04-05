@@ -503,10 +503,310 @@ describe('Generate Timeline', () => {
 
 		expect(p.groupTradesByStock).toHaveBeenCalledWith(mockTrades)
 	})
-	it.todo('Loops over each trade and adding its value and p/l for each date')
-	it.todo('Carries cashAvailable from the previous day')
-	it.todo('Allows for changes in cashAvailable')
-	it.todo('Keeps track of how many positions open for each day')
+
+	it('starts with the startCapital for cashAvailable', async () => {
+		const fetchStock = jest.fn().mockResolvedValue(new Stock({ data: mockStock }))
+		DataFetcher.mockImplementationOnce(() => ({ fetchStock }))
+		const p = new Portfolio({}, { DataFetcher })
+
+		const firstTrade = new Trade(mockTrades[0])
+
+		const resp = await p.generateTimeline({
+			trades: mockTrades.map(t => new Trade(t)),
+			timeline: new Map([
+				['2000-05-23T22:00:00.000Z', { cashAvailable: 95108.8 }],
+				['2000-05-30T22:00:00.000Z', { cashAvailable: 90760.42000000001 }],
+				['2000-06-15T22:00:00.000Z', { cashAvailable: 94514.17000000001 }],
+				['2000-06-30T22:00:00.000Z', { cashAvailable: 98369.32 }]
+			]),
+			firstTrade
+		})
+
+		expect([...resp.values()][0].cashAvailable).toEqual(p.startCapital)
+	})
+
+	it('Carries the cashAvailable from the previous day', async () => {
+		const stockClone = { ...mockStock }
+		stockClone.priceData = stockClone.priceData.filter(
+			x => new Date(x.date) <= new Date('2000-06-30T22:00:00.000Z')
+		)
+		const fetchStock = jest.fn().mockResolvedValue(new Stock({ data: stockClone }))
+		DataFetcher.mockImplementationOnce(() => ({ fetchStock }))
+		const p = new Portfolio({}, { DataFetcher })
+
+		const firstTrade = new Trade(mockTrades[0])
+
+		const resp = await p.generateTimeline({
+			trades: mockTrades.map(t => new Trade(t)),
+			timeline: new Map([
+				['2000-05-23T22:00:00.000Z', { cashAvailable: 95108.8 }],
+				['2000-05-30T22:00:00.000Z', { cashAvailable: 90760.42000000001 }],
+				['2000-06-15T22:00:00.000Z', { cashAvailable: 94514.17000000001 }],
+				['2000-06-30T22:00:00.000Z', { cashAvailable: 98369.32 }]
+			]),
+			firstTrade
+		})
+
+		expect([...resp.values()][1].cashAvailable).toEqual(p.startCapital)
+	})
+
+	it('Allows for changes in cashAvailable', async () => {
+		const stockClone = { ...mockStock }
+		stockClone.priceData = stockClone.priceData.filter(x => {
+			const d = new Date(x.date)
+			return (
+				d <= new Date('2000-06-07T22:00:00.000Z') || d >= new Date('2000-05-20T22:00:00.000Z')
+			)
+		})
+		const fetchStock = jest.fn().mockResolvedValue(new Stock({ data: stockClone }))
+		DataFetcher.mockImplementationOnce(() => ({ fetchStock }))
+		const p = new Portfolio({}, { DataFetcher })
+
+		const firstTrade = new Trade(mockTrades[0])
+
+		const resp = await p.generateTimeline({
+			trades: mockTrades.map(t => new Trade(t)),
+			timeline: new Map([
+				['2000-05-23T22:00:00.000Z', { cashAvailable: 95108.8 }],
+				['2000-05-250T22:00:00.000Z', { cashAvailable: 90760 }],
+				['2000-05-28T22:00:00.000Z', { cashAvailable: 94514 }],
+				['2000-06-05T22:00:00.000Z', { cashAvailable: 98369.32 }]
+			]),
+			firstTrade
+		})
+
+		expect(resp.get('2000-05-22T22:00:00.000Z').cashAvailable).toBe(100000)
+		expect(resp.get('2000-05-23T22:00:00.000Z').cashAvailable).toBe(95108.8)
+		expect(resp.get('2000-05-24T22:00:00.000Z').cashAvailable).toBe(95108.8)
+		expect(resp.get('2000-05-25T22:00:00.000Z').cashAvailable).toBe(95108.8)
+		expect(resp.get('2000-05-28T22:00:00.000Z').cashAvailable).toBe(94514)
+		expect(resp.get('2000-06-05T22:00:00.000Z').cashAvailable).toBe(98369.32)
+		expect(resp.get('2000-06-07T22:00:00.000Z').cashAvailable).toBe(98369.32)
+	})
+
+	it('Sets the total to the cashAvailable initially', async () => {
+		const stockClone = { ...mockStock }
+		stockClone.priceData = stockClone.priceData.filter(x => {
+			const d = new Date(x.date)
+			return (
+				d <= new Date('2000-06-07T22:00:00.000Z') || d >= new Date('2000-05-20T22:00:00.000Z')
+			)
+		})
+		const fetchStock = jest.fn().mockResolvedValue(new Stock({ data: stockClone }))
+		DataFetcher.mockImplementationOnce(() => ({ fetchStock }))
+		const p = new Portfolio({}, { DataFetcher })
+
+		const firstTrade = new Trade(mockTrades[0])
+
+		const resp = await p.generateTimeline({
+			trades: mockTrades.map(t => new Trade(t)),
+			timeline: new Map([
+				['2000-05-23T22:00:00.000Z', { cashAvailable: 95108.8 }],
+				['2000-05-250T22:00:00.000Z', { cashAvailable: 90760 }],
+				['2000-05-28T22:00:00.000Z', { cashAvailable: 94514 }],
+				['2000-06-05T22:00:00.000Z', { cashAvailable: 98369.32 }]
+			]),
+			firstTrade
+		})
+
+		expect([...resp.values()].every(({ cashAvailable, total }) => cashAvailable === total)).toBe(
+			true
+		)
+	})
+
+	it('Creates a DataFetcher', async () => {
+		const p = new Portfolio()
+		p.getDateMap = jest.fn().mockReturnValue(new Map())
+		const firstTrade = new Trade(mockTrades[0])
+
+		const resp = await p.generateTimeline({
+			trades: mockTrades.map(t => new Trade(t)),
+			timeline: new Map([
+				['2000-05-23T22:00:00.000Z', { cashAvailable: 95108.8 }],
+				['2000-05-30T22:00:00.000Z', { cashAvailable: 90760.42000000001 }],
+				['2000-06-15T22:00:00.000Z', { cashAvailable: 94514.17000000001 }],
+				['2000-06-30T22:00:00.000Z', { cashAvailable: 98369.32 }]
+			]),
+			firstTrade
+		})
+		expect(DataFetcher).toHaveBeenCalledTimes(1)
+	})
+
+	it('Calls fetchStock with each ID', async () => {
+		const p = new Portfolio()
+		p.getDateMap = jest.fn().mockReturnValue(new Map())
+		const firstTrade = new Trade(mockTrades[0])
+
+		const resp = await p.generateTimeline({
+			trades: mockTrades.map(t => new Trade(t)),
+			timeline: new Map([
+				['2000-05-23T22:00:00.000Z', { cashAvailable: 95108.8 }],
+				['2000-05-30T22:00:00.000Z', { cashAvailable: 90760.42000000001 }],
+				['2000-06-15T22:00:00.000Z', { cashAvailable: 94514.17000000001 }],
+				['2000-06-30T22:00:00.000Z', { cashAvailable: 98369.32 }]
+			]),
+			firstTrade,
+			DataFetcher
+		})
+
+		const mockFunc = DataFetcher.mock.instances[0].fetchStock
+
+		expect(mockFunc).toHaveBeenCalledTimes(2)
+		expect(mockFunc.mock.calls[0][0].id).toBe(5277)
+		expect(mockFunc.mock.calls[1][0].id).toBe(6423)
+	})
+
+	it('Passes the data from fetchstock in to each trade instance', async () => {
+		const p = new Portfolio()
+		p.getDateMap = jest.fn().mockReturnValue(new Map())
+
+		DataFetcher.mockImplementationOnce(() => ({ fetchStock: x => [x.id] }))
+
+		const firstTrade = new Trade(mockTrades[0])
+		const trades = mockTrades.map(t => {
+			const trade = new Trade(t)
+			trade.getTradePerformance = jest.fn().mockReturnValue([])
+			return trade
+		})
+
+		const resp = await p.generateTimeline({
+			trades,
+			timeline: new Map([
+				['2000-05-23T22:00:00.000Z', { cashAvailable: 95108.8 }],
+				['2000-05-30T22:00:00.000Z', { cashAvailable: 90760.42000000001 }],
+				['2000-06-15T22:00:00.000Z', { cashAvailable: 94514.17000000001 }],
+				['2000-06-30T22:00:00.000Z', { cashAvailable: 98369.32 }]
+			]),
+			firstTrade,
+			DataFetcher
+		})
+
+		expect(trades[0].getTradePerformance).toHaveBeenCalledWith([5277])
+		expect(trades[1].getTradePerformance).toHaveBeenCalledWith([6423])
+		expect(trades[2].getTradePerformance).toHaveBeenCalledWith([5277])
+	})
+
+	it('creates a queue to be executed', async () => {
+		const p = new Portfolio()
+		p.getDateMap = jest.fn().mockReturnValue(new Map())
+		const firstTrade = new Trade(mockTrades[0])
+
+		const queue = jest.fn()
+		const resp = await p.generateTimeline({
+			trades: mockTrades.map(t => new Trade(t)),
+			timeline: new Map([
+				['2000-05-23T22:00:00.000Z', { cashAvailable: 95108.8 }],
+				['2000-05-30T22:00:00.000Z', { cashAvailable: 90760.42000000001 }],
+				['2000-06-15T22:00:00.000Z', { cashAvailable: 94514.17000000001 }],
+				['2000-06-30T22:00:00.000Z', { cashAvailable: 98369.32 }]
+			]),
+			firstTrade,
+			DataFetcher,
+			queue
+		})
+
+		expect(queue).toHaveBeenCalledTimes(1)
+
+		const call = queue.mock.calls[0]
+		expect(call[0].length).toBe(2) // Once for each stock traded, not for each trade
+		expect(call[1]).toBe(10)
+	})
+
+	it('Loops over each trade and adding its value and p/l for each date', async () => {
+		const p = new Portfolio()
+		p.getDateMap = jest
+			.fn()
+			.mockReturnValue(
+				new Map([
+					['2000-05-23T22:00:00.000Z', { cashAvailable: 95108.8 }],
+					['2000-05-30T22:00:00.000Z', { cashAvailable: 90760 }],
+					['2000-06-15T22:00:00.000Z', { cashAvailable: 94514 }],
+					['2000-06-30T22:00:00.000Z', { cashAvailable: 98369.32 }]
+				])
+			)
+
+		DataFetcher.mockImplementationOnce(() => ({ fetchStock: x => [x.id] }))
+
+		const firstTrade = new Trade(mockTrades[0])
+		const trades = mockTrades.map(t => {
+			const trade = new Trade(t)
+			trade.getTradePerformance = jest
+				.fn()
+				.mockReturnValue([
+					{ date: new Date('2000-05-23T22:00:00.000Z'), value: 100 },
+					{ date: new Date('2000-05-30T22:00:00.000Z'), value: 10 },
+					{ date: new Date('2000-06-15T22:00:00.000Z'), value: 1000 },
+					{ date: new Date('2000-06-30T22:00:00.000Z'), value: 1 }
+				])
+			return trade
+		})
+
+		const resp = await p.generateTimeline({
+			trades,
+			timeline: new Map([
+				['2000-05-23T22:00:00.000Z', { cashAvailable: 95108.8 }],
+				['2000-05-30T22:00:00.000Z', { cashAvailable: 90760 }],
+				['2000-06-15T22:00:00.000Z', { cashAvailable: 94514 }],
+				['2000-06-30T22:00:00.000Z', { cashAvailable: 98369.32 }]
+			]),
+			firstTrade,
+			DataFetcher
+		})
+
+		expect(resp.get('2000-05-23T22:00:00.000Z').cashAvailable).toBe(95108.8)
+		expect(resp.get('2000-05-23T22:00:00.000Z').total).toBe(95408.8)
+		expect(resp.get('2000-05-23T22:00:00.000Z').totalPositionValue).toBe(300)
+
+		expect(resp.get('2000-06-15T22:00:00.000Z').cashAvailable).toBe(94514)
+		expect(resp.get('2000-06-15T22:00:00.000Z').total).toBe(97514)
+		expect(resp.get('2000-06-15T22:00:00.000Z').totalPositionValue).toBe(3000)
+	})
+
+	it('Keeps track of how many positions open for each day', async () => {
+		const p = new Portfolio()
+		p.getDateMap = jest
+			.fn()
+			.mockReturnValue(
+				new Map([
+					['2000-05-23T22:00:00.000Z', { cashAvailable: 95108.8 }],
+					['2000-05-30T22:00:00.000Z', { cashAvailable: 90760 }],
+					['2000-06-15T22:00:00.000Z', { cashAvailable: 94514 }],
+					['2000-06-30T22:00:00.000Z', { cashAvailable: 98369.32 }]
+				])
+			)
+
+		DataFetcher.mockImplementationOnce(() => ({ fetchStock: x => [x.id] }))
+
+		const firstTrade = new Trade(mockTrades[0])
+		const trades = mockTrades.map(t => {
+			const trade = new Trade(t)
+			trade.getTradePerformance = jest
+				.fn()
+				.mockReturnValue([
+					{ date: new Date('2000-05-23T22:00:00.000Z'), value: 100 },
+					{ date: new Date('2000-05-30T22:00:00.000Z'), value: 10 },
+					{ date: new Date('2000-06-15T22:00:00.000Z'), value: 1000 },
+					{ date: new Date('2000-06-30T22:00:00.000Z'), value: 1 }
+				])
+			return trade
+		})
+
+		const resp = await p.generateTimeline({
+			trades,
+			timeline: new Map([
+				['2000-05-23T22:00:00.000Z', { cashAvailable: 95108.8 }],
+				['2000-05-30T22:00:00.000Z', { cashAvailable: 90760 }],
+				['2000-06-15T22:00:00.000Z', { cashAvailable: 94514 }],
+				['2000-06-30T22:00:00.000Z', { cashAvailable: 98369.32 }]
+			]),
+			firstTrade,
+			DataFetcher
+		})
+
+		expect(resp.get('2000-05-23T22:00:00.000Z').numberOfPositionsOpen).toBe(3)
+	})
+
+	// ? This might be unnecessary...?
 	it.todo('Keeps track of percentage invested = positionValues/(position values + cashAvailable)')
 })
 
@@ -514,6 +814,7 @@ describe('Group trades by stock', () => {
 	it('Groups trades by their IDs', () => {
 		const p = new Portfolio()
 		const resp = p.groupTradesByStock(mockTrades.map(t => new Trade(t)))
+		expect(resp.get(5277).length).toBe(2)
 		expect([...resp.keys()]).toEqual([5277, 6423])
 	})
 
