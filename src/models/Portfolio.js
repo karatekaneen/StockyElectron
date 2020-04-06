@@ -218,7 +218,7 @@ class Portfolio {
 
 			tradesInStock.forEach(trade =>
 				trade
-					.getTradePerformance(stockdata)
+					.getTradePerformance({ priceData: stockdata })
 					.forEach(({ date, value }) => this.checkAndAddValues(date, value, dateMap))
 			)
 		})

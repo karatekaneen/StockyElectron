@@ -1,5 +1,6 @@
 /* eslint-disable indent */
 import _Signal from './Signal'
+import DateSearcher from '../utils/DateSearcher'
 
 /**
  * Class to calculate and store data about a particular trade.
@@ -11,12 +12,14 @@ class Trade {
 	 * @param {Signal} params.entry the entry signal
 	 * @param {Signal} params.exit the exit signal
 	 * @param {Stock} params.stock Information about the stock the trade was in. Will be used for UI and aggregation.
-	 * @param {Array<Object>} params.tradeData The price action between entry and exit
 	 * @param {Number} params.quantity The number of shares
 	 * @param {Object} deps
 	 * @param {Class} deps.Signal
 	 */
-	constructor({ entry, exit, stock, quantity = 1 }, { Signal = _Signal } = {}) {
+	constructor(
+		{ entry, exit, stock, quantity = 1 },
+		{ Signal = _Signal, searchForDate = DateSearcher } = {}
+	) {
 		/**
 		 * Validates that the input is a Signal instance
 		 * @param {Object} s Hopefully a Signal
@@ -28,6 +31,7 @@ class Trade {
 		this.exit = isSignal(exit) ? exit : new Signal(exit)
 		this.stock = stock
 		this.quantity = quantity
+		this.searchForDate = searchForDate
 	}
 
 	get entryPrice() {
@@ -72,39 +76,6 @@ class Trade {
 
 		return 0
 	}
-
-	/**
-	 * Returns the performance of the trade in percent while in market.
-	 * @returns {Array<Object>} The pricedata between entry and exit in percent
-	 * @todo Make _performancePercent private when able to.
-	 */
-	// get performancePercent() {
-	// 	// TODO Make _performancePercent private when able to.
-	// 	if (!this._performancePercent) {
-	// 		this._performancePercent = this.calculatePerformancePercent({
-	// 			entryPrice: this.entryPrice,
-	// 			tradeData: this.tradeData
-	// 		})
-	// 	}
-	// 	return this._performancePercent
-	// }
-
-	/**
-	 * Returns the performance of the trade in $ while in market.
-	 * @returns {Array<Object>} The pricedata between entry and exit cash
-	 */
-	// get performanceCash() {
-	// 	// TODO Redo this to fetch data on request
-	// 	return this.performancePercent.map(pricePoint => {
-	// 		const output = { ...pricePoint }
-	// 		output.open = this.roundNumber(this.entryPrice * output.open * this.quantity)
-	// 		output.high = this.roundNumber(this.entryPrice * output.high * this.quantity)
-	// 		output.low = this.roundNumber(this.entryPrice * output.low * this.quantity)
-	// 		output.close = this.roundNumber(this.entryPrice * output.close * this.quantity)
-
-	// 		return output
-	// 	})
-	// }
 
 	/**
 	 * Calculates the initial position value
@@ -166,30 +137,39 @@ class Trade {
 		return (price + fee.calculate(price * quantity)) / quantity
 	}
 
+	/**
+	 * Calculates the number of shares to buy based on amount of cash available
+	 * @param {number} amount the max amount to buy for
+	 * @returns {number} the number of shares to buy
+	 */
 	calculateQuantity(amount) {
 		return Math.floor(amount / this.entry.price) // Using the raw entry price to avoid double fees in the calculation
 	}
 
-	// /**
-	//  * Calculates the % performance for each bar in market
-	//  * @param {Object} params
-	//  * @param {Number} params.entryPrice
-	//  * @param {Array<Object>} params.tradeData The array of price action between entry and exit
-	//  * @returns {Array<Object>} The price action while in market in %
-	//  */
-	// calculatePerformancePercent({ entryPrice, tradeData }) {
-	// 	// TODO Redo this to fetch data on request
-	// 	return tradeData.map(pricePoint => {
-	// 		const output = { ...pricePoint }
+	/**
+	 * Calculates the trade performance (value) for each day
+	 * @param {object} params
+	 * @param {Array<object>} params.pricedata The pricedata to extract
+	 * @param {Date} params.startDate The date to start the extraction from. this is _included_ in the output
+	 * @param {Date} params.endDate The date to end the extraction at. This is _excluded_ from the output.
+	 * @param {number} params.quantity The quantity of shares bought
+	 * @param {Function} params.searchForDate Search algorithm. Returns the index of the date in the array
+	 * @returns {Array<object>} Array of the position value for each date. Looks like: `{ date: *date instance*, value: 23484 }`
+	 */
+	getTradePerformance({
+		pricedata,
+		startDate = this.entry.date,
+		endDate = this.exit.date,
+		quantity = this.quantity,
+		searchForDate = this.searchForDate
+	}) {
+		const startIndex = searchForDate({ pricedata, date: startDate })
+		const endIndex = searchForDate({ pricedata, date: endDate })
 
-	// 		output.open = (pricePoint.open - entryPrice) / entryPrice
-	// 		output.high = (pricePoint.high - entryPrice) / entryPrice
-	// 		output.low = (pricePoint.low - entryPrice) / entryPrice
-	// 		output.close = (pricePoint.close - entryPrice) / entryPrice
-
-	// 		return output
-	// 	})
-	// }
+		return pricedata
+			.slice(startIndex, endIndex)
+			.map(({ date, close }) => ({ date, value: close * quantity }))
+	}
 
 	/**
 	 * Converts from the annoying 13-decimal floats.
@@ -199,7 +179,7 @@ class Trade {
 	 * @todo Make private
 	 */
 	roundNumber(num) {
-		// TODO Make private when able to.
+		// TODO Extract to be able to use on other places
 		return Math.round(num * 1e10) / 1e10
 	}
 }

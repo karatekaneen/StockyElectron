@@ -681,9 +681,9 @@ describe('Generate Timeline', () => {
 			DataFetcher
 		})
 
-		expect(trades[0].getTradePerformance).toHaveBeenCalledWith([5277])
-		expect(trades[1].getTradePerformance).toHaveBeenCalledWith([6423])
-		expect(trades[2].getTradePerformance).toHaveBeenCalledWith([5277])
+		expect(trades[0].getTradePerformance).toHaveBeenCalledWith({ priceData: [5277] })
+		expect(trades[1].getTradePerformance).toHaveBeenCalledWith({ priceData: [6423] })
+		expect(trades[2].getTradePerformance).toHaveBeenCalledWith({ priceData: [5277] })
 	})
 
 	it('creates a queue to be executed', async () => {

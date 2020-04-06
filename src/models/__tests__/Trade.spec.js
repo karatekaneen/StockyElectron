@@ -8,6 +8,50 @@ import Fee from '../Fee'
 const entrySignal = mockData.entrySignal
 const exitSignal = mockData.exitSignal
 
+const mockTrade = {
+	entry: {
+		stock: {
+			id: 5277,
+			name: 'Bure Equity',
+			list: 'Mid Cap Stockholm',
+			lastPricePoint: null,
+			linkName: null,
+			dataSeries: []
+		},
+		price: 101.9,
+		date: new Date('2019-01-20T15:16:36.143Z'),
+		action: 'buy',
+		type: 'enter',
+		status: 'executed'
+	},
+	exit: {
+		stock: {
+			id: 5277,
+			name: 'Bure Equity',
+			list: 'Mid Cap Stockholm',
+			lastPricePoint: null,
+			linkName: null,
+			dataSeries: []
+		},
+		price: 117.24,
+		date: new Date('2020-01-19T15:16:36.143Z'),
+		action: 'sell',
+		type: 'exit',
+		status: 'executed'
+	},
+	stock: {
+		id: 5277,
+		name: 'Bure Equity',
+		list: 'Mid Cap Stockholm',
+		lastPricePoint: null,
+		linkName: null,
+		dataSeries: []
+	},
+	quantity: 1,
+	resultPerStock: 15.34,
+	resultPercent: 0.15053974484789
+}
+
 describe('Trade', () => {
 	let entry
 	let exit
@@ -215,8 +259,80 @@ describe('Trade', () => {
 		expect(t.calculateQuantity(154654.234645345)).toBe(4491)
 	})
 
-	it.todo('Throws if start date is not equal to entry signal date')
-	it.todo('require end date to be equal to exit signal date')
-	it.todo('Creates array with position value throughout the whole trade')
-	it.todo('Calculates p/l for each bar')
+	describe('Get performance', () => {
+		it('Calls to extract both entry and exit index', () => {
+			const t = new Trade(mockTrade)
+			const searchForDate = jest.fn().mockReturnValue(1)
+			t.getTradePerformance({ pricedata: ['my mock price data'], searchForDate })
+
+			expect(searchForDate).toHaveBeenCalledTimes(2)
+			expect(searchForDate).toHaveBeenCalledWith({
+				pricedata: ['my mock price data'],
+				date: t.entry.date
+			})
+			expect(searchForDate).toHaveBeenCalledWith({
+				pricedata: ['my mock price data'],
+				date: t.exit.date
+			})
+		})
+
+		it('extracts the pricedata with the entry date included and the exit date excluded', () => {
+			const t = new Trade(mockTrade)
+
+			const startIndex = 1 // This should be included
+			const endIndex = 6 // This should be excluded
+
+			const searchForDate = jest
+				.fn()
+				.mockReturnValueOnce(startIndex)
+				.mockReturnValueOnce(endIndex)
+
+			const pricedata = new Array(10).fill(0).map((_, i) => ({ date: new Date(i), close: i }))
+
+			const resp = t.getTradePerformance({ pricedata, searchForDate }).map(x => x.value)
+
+			expect(resp[0]).toBe(startIndex)
+			expect(resp[resp.length - 1]).toBe(endIndex - 1)
+		})
+
+		it('multiplies the closing price with the quantity set', () => {
+			const t = new Trade(mockTrade)
+
+			const startIndex = 1 // This should be included
+			const endIndex = 6 // This should be excluded
+
+			const searchForDate = jest
+				.fn()
+				.mockReturnValueOnce(startIndex)
+				.mockReturnValueOnce(endIndex)
+
+			const pricedata = new Array(10).fill(0).map((_, i) => ({ date: new Date(i), close: i }))
+
+			const resp = t
+				.setQuantity(10)
+				.getTradePerformance({ pricedata, searchForDate })
+				.map(x => x.value)
+
+			expect(resp[0]).toBe(startIndex * 10)
+			expect(resp[resp.length - 1]).toBe((endIndex - 1) * 10)
+		})
+
+		it('returns the dates as Date instances', () => {
+			const t = new Trade(mockTrade)
+
+			const startIndex = 1 // This should be included
+			const endIndex = 6 // This should be excluded
+
+			const searchForDate = jest
+				.fn()
+				.mockReturnValueOnce(startIndex)
+				.mockReturnValueOnce(endIndex)
+
+			const pricedata = new Array(10).fill(0).map((_, i) => ({ date: new Date(i), close: i }))
+
+			const resp = t.getTradePerformance({ pricedata, searchForDate }).map(x => x.date)
+
+			expect(resp.every(x => x instanceof Date)).toBe(true)
+		})
+	})
 })
