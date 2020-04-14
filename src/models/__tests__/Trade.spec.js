@@ -263,20 +263,20 @@ describe('Trade', () => {
 		it('Calls to extract both entry and exit index', () => {
 			const t = new Trade(mockTrade)
 			const searchForDate = jest.fn().mockReturnValue(1)
-			t.getTradePerformance({ pricedata: ['my mock price data'], searchForDate })
+			t.getTradePerformance({ priceData: ['my mock price data'], searchForDate })
 
 			expect(searchForDate).toHaveBeenCalledTimes(2)
 			expect(searchForDate).toHaveBeenCalledWith({
-				pricedata: ['my mock price data'],
+				priceData: ['my mock price data'],
 				date: t.entry.date
 			})
 			expect(searchForDate).toHaveBeenCalledWith({
-				pricedata: ['my mock price data'],
+				priceData: ['my mock price data'],
 				date: t.exit.date
 			})
 		})
 
-		it('extracts the pricedata with the entry date included and the exit date excluded', () => {
+		it('extracts the priceData with the entry date included and the exit date excluded', () => {
 			const t = new Trade(mockTrade)
 
 			const startIndex = 1 // This should be included
@@ -287,9 +287,9 @@ describe('Trade', () => {
 				.mockReturnValueOnce(startIndex)
 				.mockReturnValueOnce(endIndex)
 
-			const pricedata = new Array(10).fill(0).map((_, i) => ({ date: new Date(i), close: i }))
+			const priceData = new Array(10).fill(0).map((_, i) => ({ date: new Date(i), close: i }))
 
-			const resp = t.getTradePerformance({ pricedata, searchForDate }).map(x => x.value)
+			const resp = t.getTradePerformance({ priceData, searchForDate }).map(x => x.value)
 
 			expect(resp[0]).toBe(startIndex)
 			expect(resp[resp.length - 1]).toBe(endIndex - 1)
@@ -306,11 +306,11 @@ describe('Trade', () => {
 				.mockReturnValueOnce(startIndex)
 				.mockReturnValueOnce(endIndex)
 
-			const pricedata = new Array(10).fill(0).map((_, i) => ({ date: new Date(i), close: i }))
+			const priceData = new Array(10).fill(0).map((_, i) => ({ date: new Date(i), close: i }))
 
 			const resp = t
 				.setQuantity(10)
-				.getTradePerformance({ pricedata, searchForDate })
+				.getTradePerformance({ priceData, searchForDate })
 				.map(x => x.value)
 
 			expect(resp[0]).toBe(startIndex * 10)
@@ -328,9 +328,9 @@ describe('Trade', () => {
 				.mockReturnValueOnce(startIndex)
 				.mockReturnValueOnce(endIndex)
 
-			const pricedata = new Array(10).fill(0).map((_, i) => ({ date: new Date(i), close: i }))
+			const priceData = new Array(10).fill(0).map((_, i) => ({ date: new Date(i), close: i }))
 
-			const resp = t.getTradePerformance({ pricedata, searchForDate }).map(x => x.date)
+			const resp = t.getTradePerformance({ priceData, searchForDate }).map(x => x.date)
 
 			expect(resp.every(x => x instanceof Date)).toBe(true)
 		})

@@ -144,36 +144,40 @@ beforeEach(() => {
 })
 
 describe('Backtest', () => {
-	it('Calls to generate signal map', () => {
+	it('Calls to generate signal map', async () => {
 		const p = new Portfolio()
 		p.generateSignalMaps = jest.fn().mockReturnValue(new Map())
 
-		p.backtest({ trades: mockTrades })
+		await p.backtest({ trades: mockTrades })
 
 		expect(p.generateSignalMaps).toHaveBeenCalledWith(mockTrades)
 	})
 
-	it('Calls to rank signals for each day', () => {
+	it('Calls to rank signals for each day', async () => {
 		const p = new Portfolio()
+		p.generateTimeline = jest.fn()
+
 		p.rankSignals = jest.fn().mockReturnValue([])
 
-		p.backtest({ trades: mockTrades })
+		await p.backtest({ trades: mockTrades })
 
 		expect(p.rankSignals).toHaveBeenCalledTimes(2) // One for each unique date with at least 1 entry signal
 	})
 
-	it('Calculates max position value', () => {
+	it('Calculates max position value', async () => {
 		const p = new Portfolio()
+		p.generateTimeline = jest.fn()
+
 		p.calculateMaxPositionValue = jest.fn(p.calculateMaxPositionValue)
 
-		p.backtest({ trades: [mockTrades[0]] })
+		await p.backtest({ trades: [mockTrades[0]] })
 
 		expect(p.calculateMaxPositionValue).toHaveBeenCalledTimes(1)
 
 		expect(p.calculateMaxPositionValue.mock.calls[0][0]).toEqual(100000)
 	})
 
-	it('Can buy cheaper stock if there isnt room for more expensive', () => {
+	it('Can buy cheaper stock if there isnt room for more expensive', async () => {
 		const diversePricedStocks = [
 			{
 				entry: {
@@ -264,14 +268,16 @@ describe('Backtest', () => {
 		]
 
 		const p = new Portfolio()
+		p.generateTimeline = jest.fn()
+
 		p.calculateMaxPositionValue = jest.fn(p.calculateMaxPositionValue)
 
-		const resp = p.backtest({ trades: diversePricedStocks })
+		const resp = await p.backtest({ trades: diversePricedStocks })
 		expect(p.historicalTrades.length).toEqual(1)
 		expect(p.historicalTrades[0].entryPrice).toBe(110.47) // only bought the cheap stock
 	})
 
-	it('Withdraws cash on entry', () => {
+	it('Withdraws cash on entry', async () => {
 		const tradeWithoutExit = new Trade({
 			entry: {
 				stock: {
@@ -317,6 +323,7 @@ describe('Backtest', () => {
 		})
 
 		const p = new Portfolio({ startCapital: 100000 })
+		p.generateTimeline = jest.fn()
 
 		p.generateSignalMaps = jest
 			.fn()
@@ -324,11 +331,11 @@ describe('Backtest', () => {
 				new Map().set('2019-01-20T15:16:36.143Z', { entry: [tradeWithoutExit], exit: [] })
 			)
 
-		p.backtest({ trades: [tradeWithoutExit] })
+		await p.backtest({ trades: [tradeWithoutExit] })
 		expect(p.cashAvailable).toEqual(95108.8)
 	})
 
-	it('Removes slot from availability on entry', () => {
+	it('Removes slot from availability on entry', async () => {
 		const tradeWithoutExit = new Trade({
 			entry: {
 				stock: {
@@ -374,6 +381,7 @@ describe('Backtest', () => {
 		})
 
 		const p = new Portfolio({ startCapital: 100000 })
+		p.generateTimeline = jest.fn()
 
 		p.generateSignalMaps = jest
 			.fn()
@@ -382,74 +390,87 @@ describe('Backtest', () => {
 			)
 
 		expect(p.openPositions).toEqual(0)
-		p.backtest({ trades: [tradeWithoutExit] })
+		await p.backtest({ trades: [tradeWithoutExit] })
 		expect(p.openPositions).toEqual(1)
 	})
 
-	it('Calls to calculate quantity with max position value', () => {
+	it('Calls to calculate quantity with max position value', async () => {
 		const trade = new Trade(mockTrades[0])
 		trade.calculateQuantity = jest.fn(trade.calculateQuantity)
 
 		const p = new Portfolio({ feeMinimum: 0, feePercentage: 0, maxNumberOfStocks: 20 })
+		p.generateTimeline = jest.fn()
 
-		p.backtest({ trades: [trade] })
+		await p.backtest({ trades: [trade] })
 
 		expect(trade.calculateQuantity).toHaveBeenCalledWith(5000)
 		expect(trade.calculateQuantity).toHaveBeenCalledTimes(1)
 		expect(trade.quantity).toBe(49)
 	})
 
-	it('Does not add any trades if there isnt any slots open', () => {
+	it('Does not add any trades if there isnt any slots open', async () => {
 		const trade = new Trade(mockTrades[0])
 		trade.calculateQuantity = jest.fn(trade.calculateQuantity)
 
 		const p = new Portfolio({ feeMinimum: 0, feePercentage: 0, maxNumberOfStocks: 0 })
+		p.generateTimeline = jest.fn()
 
-		p.backtest({ trades: [trade] })
+		await p.backtest({ trades: [trade] })
 
 		expect(trade.calculateQuantity).not.toHaveBeenCalled()
 		expect(trade.quantity).toBe(1) // Default quantity
 	})
 
-	it('Removes trade from currently holding upon exit', () => {
+	it('Removes trade from currently holding upon exit', async () => {
 		const p = new Portfolio()
-		p.backtest({ trades: mockTrades })
+		p.generateTimeline = jest.fn()
+
+		await p.backtest({ trades: mockTrades })
 		expect(p.openTrades.size).toBe(0)
 	})
 
-	it('Adds closed trades to historicalTrades', () => {
+	it('Adds closed trades to historicalTrades', async () => {
 		const p = new Portfolio()
-		p.backtest({ trades: mockTrades })
+		p.generateTimeline = jest.fn()
+
+		await p.backtest({ trades: mockTrades })
 		expect(p.historicalTrades.length).toBe(mockTrades.length)
 	})
 
-	it('Adds availability on exit', () => {
+	it('Adds availability on exit', async () => {
 		const p = new Portfolio()
-		p.backtest({ trades: mockTrades })
+		p.generateTimeline = jest.fn()
+
+		await p.backtest({ trades: mockTrades })
 		expect(p.openPositions).toBe(0)
 	})
 
-	it('Deposits cash on exit', () => {
+	it('Deposits cash on exit', async () => {
 		const p = new Portfolio()
-		p.backtest({ trades: [mockTrades[0]] })
+		p.generateTimeline = jest.fn()
+
+		await p.backtest({ trades: [mockTrades[0]] })
 		expect(p.cashAvailable).toBe(100736.32)
 
-		p.backtest({ trades: mockTrades })
+		await p.backtest({ trades: mockTrades })
 		expect(p.cashAvailable).toBe(98369.32)
 	})
 
-	it('Keeps track of number of signals sorted out', () => {
+	it('Keeps track of number of signals sorted out', async () => {
 		const p = new Portfolio({ maxNumberOfStocks: 1 })
-		p.backtest({ trades: mockTrades })
+		p.generateTimeline = jest.fn()
+
+		await p.backtest({ trades: mockTrades })
 		expect(p.signalsNotTaken).toBe(1)
 	})
 
-	it('Calls to generate timeline if there are any trades', () => {
+	it('Calls to generate timeline if there are any trades', async () => {
 		const p = new Portfolio()
+		p.generateTimeline = jest.fn()
 
 		p.generateTimeline = jest.fn()
 
-		p.backtest({ trades: mockTrades })
+		await p.backtest({ trades: mockTrades })
 
 		expect(p.generateTimeline).toHaveBeenCalledTimes(1)
 		expect(p.generateTimeline.mock.calls[0][0].firstTrade.entry.price).toBe(
@@ -457,19 +478,21 @@ describe('Backtest', () => {
 		)
 	})
 
-	it('Does not call to generate timeline if there isnt any trades', () => {
+	it('Does not call to generate timeline if there isnt any trades', async () => {
 		const p = new Portfolio()
 		p.generateTimeline = jest.fn()
 		p.generateSignalMaps = jest.fn().mockReturnValue(new Map())
 
-		p.backtest({ trades: mockTrades })
+		await p.backtest({ trades: mockTrades })
 
 		expect(p.generateTimeline).toHaveBeenCalledTimes(0)
 	})
 
-	it('Records each change of cashAvailable', () => {
+	it('Records each change of cashAvailable', async () => {
 		const p = new Portfolio()
-		p.backtest({ trades: mockTrades })
+		p.generateTimeline = jest.fn()
+
+		await p.backtest({ trades: mockTrades })
 		expect([...p.timeline.entries()]).toEqual([
 			['2019-01-20T15:16:36.143Z', { cashAvailable: 95108.8 }],
 			['2020-01-19T15:16:36.143Z', { cashAvailable: 90760.42000000001 }],
@@ -519,7 +542,8 @@ describe('Generate Timeline', () => {
 				['2000-06-15T22:00:00.000Z', { cashAvailable: 94514.17000000001 }],
 				['2000-06-30T22:00:00.000Z', { cashAvailable: 98369.32 }]
 			]),
-			firstTrade
+			firstTrade,
+			queue: jest.fn().mockResolvedValue([])
 		})
 
 		expect([...resp.values()][0].cashAvailable).toEqual(p.startCapital)
@@ -544,7 +568,8 @@ describe('Generate Timeline', () => {
 				['2000-06-15T22:00:00.000Z', { cashAvailable: 94514.17000000001 }],
 				['2000-06-30T22:00:00.000Z', { cashAvailable: 98369.32 }]
 			]),
-			firstTrade
+			firstTrade,
+			queue: jest.fn().mockResolvedValue([])
 		})
 
 		expect([...resp.values()][1].cashAvailable).toEqual(p.startCapital)
@@ -572,7 +597,8 @@ describe('Generate Timeline', () => {
 				['2000-05-28T22:00:00.000Z', { cashAvailable: 94514 }],
 				['2000-06-05T22:00:00.000Z', { cashAvailable: 98369.32 }]
 			]),
-			firstTrade
+			firstTrade,
+			queue: jest.fn().mockResolvedValue([])
 		})
 
 		expect(resp.get('2000-05-22T22:00:00.000Z').cashAvailable).toBe(100000)
@@ -606,7 +632,8 @@ describe('Generate Timeline', () => {
 				['2000-05-28T22:00:00.000Z', { cashAvailable: 94514 }],
 				['2000-06-05T22:00:00.000Z', { cashAvailable: 98369.32 }]
 			]),
-			firstTrade
+			firstTrade,
+			queue: jest.fn().mockResolvedValue([])
 		})
 
 		expect([...resp.values()].every(({ cashAvailable, total }) => cashAvailable === total)).toBe(
@@ -627,40 +654,17 @@ describe('Generate Timeline', () => {
 				['2000-06-15T22:00:00.000Z', { cashAvailable: 94514.17000000001 }],
 				['2000-06-30T22:00:00.000Z', { cashAvailable: 98369.32 }]
 			]),
-			firstTrade
+			firstTrade,
+			queue: jest.fn().mockResolvedValue([])
 		})
 		expect(DataFetcher).toHaveBeenCalledTimes(1)
-	})
-
-	it('Calls fetchStock with each ID', async () => {
-		const p = new Portfolio()
-		p.getDateMap = jest.fn().mockReturnValue(new Map())
-		const firstTrade = new Trade(mockTrades[0])
-
-		const resp = await p.generateTimeline({
-			trades: mockTrades.map(t => new Trade(t)),
-			timeline: new Map([
-				['2000-05-23T22:00:00.000Z', { cashAvailable: 95108.8 }],
-				['2000-05-30T22:00:00.000Z', { cashAvailable: 90760.42000000001 }],
-				['2000-06-15T22:00:00.000Z', { cashAvailable: 94514.17000000001 }],
-				['2000-06-30T22:00:00.000Z', { cashAvailable: 98369.32 }]
-			]),
-			firstTrade,
-			DataFetcher
-		})
-
-		const mockFunc = DataFetcher.mock.instances[0].fetchStock
-
-		expect(mockFunc).toHaveBeenCalledTimes(2)
-		expect(mockFunc.mock.calls[0][0].id).toBe(5277)
-		expect(mockFunc.mock.calls[1][0].id).toBe(6423)
 	})
 
 	it('Passes the data from fetchstock in to each trade instance', async () => {
 		const p = new Portfolio()
 		p.getDateMap = jest.fn().mockReturnValue(new Map())
 
-		DataFetcher.mockImplementationOnce(() => ({ fetchStock: x => [x.id] }))
+		DataFetcher.mockImplementationOnce(() => ({ fetchStock: x => ({ priceData: [x.id] }) }))
 
 		const firstTrade = new Trade(mockTrades[0])
 		const trades = mockTrades.map(t => {
@@ -679,6 +683,7 @@ describe('Generate Timeline', () => {
 			]),
 			firstTrade,
 			DataFetcher
+			// queue: jest.fn().mockResolvedValue([])
 		})
 
 		expect(trades[0].getTradePerformance).toHaveBeenCalledWith({ priceData: [5277] })
@@ -691,7 +696,7 @@ describe('Generate Timeline', () => {
 		p.getDateMap = jest.fn().mockReturnValue(new Map())
 		const firstTrade = new Trade(mockTrades[0])
 
-		const queue = jest.fn()
+		const queue = jest.fn().mockResolvedValue([])
 		const resp = await p.generateTimeline({
 			trades: mockTrades.map(t => new Trade(t)),
 			timeline: new Map([

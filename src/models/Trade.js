@@ -157,16 +157,16 @@ class Trade {
 	 * @returns {Array<object>} Array of the position value for each date. Looks like: `{ date: *date instance*, value: 23484 }`
 	 */
 	getTradePerformance({
-		pricedata,
+		priceData,
 		startDate = this.entry.date,
 		endDate = this.exit.date,
 		quantity = this.quantity,
 		searchForDate = this.searchForDate
 	}) {
-		const startIndex = searchForDate({ pricedata, date: startDate })
-		const endIndex = searchForDate({ pricedata, date: endDate })
+		const startIndex = searchForDate({ priceData, date: startDate })
+		const endIndex = searchForDate({ priceData, date: endDate })
 
-		return pricedata
+		return priceData
 			.slice(startIndex, endIndex)
 			.map(({ date, close }) => ({ date, value: close * quantity }))
 	}

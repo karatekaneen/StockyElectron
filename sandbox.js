@@ -1,4 +1,12 @@
-const m = new Map()
+const x = new Map()
 
-m.set('b', 'test')
-console.log(m.get('c'))
+x.set('a', { b: 2, c: 3 })
+x.set('b', { c: 3, d: 4 })
+
+console.log(x)
+const v = x.get('a')
+v.b = 1
+
+x.set('a', v)
+
+console.log(x)
