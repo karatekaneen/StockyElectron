@@ -7,6 +7,8 @@
 -  Portfolio class
 -  Monte Carlo
 -  Analyzer class
+-  Write test trades to db
+-  DataServer module to serve renderer with data from local db
 
 ### Views
 

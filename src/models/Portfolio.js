@@ -177,24 +177,13 @@ class Portfolio {
 	}
 
 	/**
-	 * Generates the portfolio history over time and keeping track of the performance, how many stocks were held on each day etc.
+	 * Adds how the cashAvailable changed over the course of the backtest.
 	 * @param {object} params
-	 * @param {Array<Trade>} params.trades The historical trades from the backtest
-	 * @param {Map} params.timeline the existing timeline for the portfolio. Just with cashAvailable set on input
-	 * @param {Trade} params.firstTrade The first trade of the backtest. Used for getting the price data from the correct date.
-	 * @param {Function} params.queue Helper function to queue work
-	 * @param {DataFetcher} params.DataFetcher Class to fetch data
-	 * @returns {Map} the portfolio history over time
+	 * @param {Map} params.dateMap Map with date strings as keys, empty so far
+	 * @param {Map} params.timeline Map with the historic changes of the cash available in the portfolio.
+	 * @returns {Map} Map with the cash history added
 	 */
-	async generateTimeline({
-		trades = this.historicalTrades,
-		timeline = this.timeline,
-		firstTrade,
-		queue = this.queue,
-		DataFetcher = this.DataFetcher
-	}) {
-		const dateMap = await this.getDateMap(firstTrade)
-
+	addCashBalanceHistory({ dateMap, timeline }) {
 		timeline.forEach(({ cashAvailable }, key) => {
 			if (cashAvailable) {
 				dateMap.set(key, { ...dateMap.get(key), cashAvailable })
@@ -211,17 +200,21 @@ class Portfolio {
 				value.cashAvailable = cashAvailable
 			}
 
-			value.total = cashAvailable
+			value.total += cashAvailable
 			dateMap.set(key, value)
-		}) // TODO Above this should be grouped to another function
+		})
 
-		// Group the stocks by id to only have to fetch the data once more.
-		const groupedTrades = this.groupTradesByStock(trades)
+		return dateMap
+	}
 
-		const client = new DataFetcher()
-
-		// Loop over the grouped trades and generate tasks (that are functions to be called in the queue)
-		const tasks = [...groupedTrades.entries()].map(([id, tradesInStock]) => {
+	/**
+	 * Loop over the grouped trades and generate tasks (that are functions to be called in the queue)
+	 * @param {Map<Trade>} groupedTrades Array of trades, grouped by stock ID
+	 * @param {DataFetcher} client DataFetcher instance
+	 * @returns {Array<Function>} Functions to be called in the queue to make sure not all runs at the same time.
+	 */
+	createTasks(groupedTrades, client) {
+		return [...groupedTrades.entries()].map(([id, tradesInStock]) => {
 			return async () => {
 				// Get the price data
 				const { priceData } = await client.fetchStock({
@@ -229,35 +222,67 @@ class Portfolio {
 					fieldString: 'priceData{ date, close }'
 				})
 
-				const output = tradesInStock.map(trade => trade.getTradePerformance({ priceData }))
-
-				return output
+				return {
+					tradeGroup: tradesInStock.map(trade => trade.getTradePerformance({ priceData })),
+					id
+				}
 			}
-		}) // TODO This should also be extracted to own function
+		})
+	}
 
+	/**
+	 * Generates the portfolio history over time and keeping track of the performance, how many stocks were held on each day etc.
+	 * @param {object} params
+	 * @param {Array<Trade>} params.trades The historical trades from the backtest
+	 * @param {Map} params.timeline the existing timeline for the portfolio. Just with cashAvailable set on input
+	 * @param {Trade} params.firstTrade The first trade of the backtest. Used for getting the price data from the correct date.
+	 * @param {Function} params.queue Helper function to queue work
+	 * @param {DataFetcher} params.DataFetcher Class to fetch data
+	 * @returns {Map} the portfolio history over time
+	 */
+	async generateTimeline({
+		trades = this.historicalTrades,
+		timeline = this.timeline,
+		queue = this.queue,
+		DataFetcher = this.DataFetcher
+	}) {
+		const dateMap = new Map()
+
+		// Group the stocks by id to only have to fetch the data once more.
+		const groupedTrades = this.groupTradesByStock(trades)
+		const client = new DataFetcher()
+		const tasks = this.createTasks(groupedTrades, client)
 		const finishedTasks = await queue(tasks, 10)
 
 		let previousValue = null
-		finishedTasks.forEach(tradeGroup => {
+		finishedTasks.forEach(({ tradeGroup, id }) => {
+			//! Note that this could be either a group of trades or error instance
+			if (tradeGroup instanceof Error) {
+				console.error(tradeGroup)
+				return
+			}
+
 			tradeGroup.forEach(trade => {
 				trade.forEach(({ date, value }) => {
-					try {
-						const prev = this.checkAndAddValues(date, value, dateMap, previousValue)
-						if (prev) {
-							previousValue = prev
-						}
-					} catch (err) {
-						console.log(err)
-						console.log(trade)
-					}
+					const prev = this.checkAndAddValues(date, value, dateMap, previousValue, id)
+					previousValue = prev
 				})
 			})
-		}) // TODO Extract?
+		})
 
-		// TODO Needs to sort the map by the keys since some dates are added out of order.
+		const sortedMap = this.sortByDate(dateMap)
+		this.addCashBalanceHistory({ dateMap: sortedMap, timeline })
 
-		this.timeline = dateMap // TODO Fix unnecessary with both return and assignment
-		return dateMap
+		this.timeline = sortedMap // TODO Fix unnecessary with both return and assignment
+		return sortedMap
+	}
+
+	sortByDate(dateMap) {
+		const keys = [...dateMap.keys()].sort((a, b) => new Date(a) - new Date(b))
+		const output = new Map()
+
+		keys.forEach(key => output.set(key, dateMap.get(key)))
+		return output
 	}
 
 	/**
@@ -268,31 +293,14 @@ class Portfolio {
 	 * @param {object|null} previousValue The previous value to use if none already exist
 	 * @returns {object} The data added to this date to be carried into the next.
 	 */
-	checkAndAddValues(date, value, dateMap, previousValue) {
-		const fetchedData = dateMap.get(date.toISOString())
-		if (!fetchedData && !previousValue) {
-			console.warn('Missing data', { date, value })
-			return null
-		}
+	checkAndAddValues(date, value, dateMap, id) {
+		const existingData = dateMap.has(date.toISOString())
+			? dateMap.get(date.toISOString())
+			: { total: 0, totalPositionValue: 0, numberOfPositionsOpen: 0, positions: [] }
 
-		const existingData = fetchedData || {
-			...previousValue,
-			totalPositionValue: 0,
-			numberOfPositionsOpen: 0,
-			total: previousValue.cashAvailable
-		}
-
-		// Check if the value exists (it won't for the first day) and then add the value
-		existingData.totalPositionValue = existingData.totalPositionValue
-			? existingData.totalPositionValue + value
-			: value
-
-		// Check and add number of positions
-		existingData.numberOfPositionsOpen = existingData.numberOfPositionsOpen
-			? existingData.numberOfPositionsOpen + 1
-			: 1
-
-		// Total does always exist so no need to check that:
+		existingData.positions.push({ id, value })
+		existingData.totalPositionValue += value
+		existingData.numberOfPositionsOpen += 1
 		existingData.total += value
 
 		// Write the new data back to the map
