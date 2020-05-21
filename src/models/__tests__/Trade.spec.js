@@ -262,16 +262,19 @@ describe('Trade', () => {
 	describe('Get performance', () => {
 		it('Calls to extract both entry and exit index', () => {
 			const t = new Trade(mockTrade)
-			const searchForDate = jest.fn().mockReturnValue(1)
-			t.getTradePerformance({ priceData: ['my mock price data'], searchForDate })
+			const searchForDate = jest
+				.fn()
+				.mockReturnValue(1)
+				.mockReturnValueOnce(0)
+			t.getTradePerformance({ priceData: [{ close: 1 }, { close: 2 }], searchForDate })
 
 			expect(searchForDate).toHaveBeenCalledTimes(2)
 			expect(searchForDate).toHaveBeenCalledWith({
-				priceData: ['my mock price data'],
+				priceData: [{ close: 1 }, { close: 2 }],
 				date: t.entry.date
 			})
 			expect(searchForDate).toHaveBeenCalledWith({
-				priceData: ['my mock price data'],
+				priceData: [{ close: 1 }, { close: 2 }],
 				date: t.exit.date
 			})
 		})
@@ -291,7 +294,7 @@ describe('Trade', () => {
 
 			const resp = t.getTradePerformance({ priceData, searchForDate }).map(x => x.value)
 
-			expect(resp[0]).toBe(startIndex)
+			expect(resp[0]).toBe(mockTrade.entry.price) // Using entry price to get correct price after fees etc when displaying
 			expect(resp[resp.length - 1]).toBe(endIndex - 1)
 		})
 
@@ -313,7 +316,8 @@ describe('Trade', () => {
 				.getTradePerformance({ priceData, searchForDate })
 				.map(x => x.value)
 
-			expect(resp[0]).toBe(startIndex * 10)
+			expect(resp[0]).toBe(t.initialValue) // Using the first value to incorporate the fees properly
+			expect(resp[0]).toBe(1019)
 			expect(resp[resp.length - 1]).toBe((endIndex - 1) * 10)
 		})
 

@@ -165,10 +165,13 @@ class Trade {
 	}) {
 		const startIndex = searchForDate({ priceData, date: startDate })
 		const endIndex = searchForDate({ priceData, date: endDate })
-
-		return priceData
+		const output = priceData
 			.slice(startIndex, endIndex)
 			.map(({ date, close }) => ({ date, value: close * quantity }))
+
+		output[0].value = this.initialValue
+
+		return output
 	}
 
 	/**
