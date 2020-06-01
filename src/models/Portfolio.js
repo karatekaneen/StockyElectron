@@ -1,3 +1,4 @@
+/* eslint-disable indent */
 import _Trade from './Trade'
 import _Fee from './Fee'
 import _DataFetcher from '../backendModules/DataFetcher'
@@ -199,8 +200,11 @@ class Portfolio {
 			} else {
 				value.cashAvailable = cashAvailable
 			}
+			let total = value.total || 0
 
-			value.total += cashAvailable
+			total += cashAvailable
+
+			value.total = total
 			dateMap.set(key, value)
 		})
 
@@ -246,7 +250,7 @@ class Portfolio {
 		queue = this.queue,
 		DataFetcher = this.DataFetcher
 	}) {
-		const dateMap = new Map()
+		const dateMap = await this.getDateMap()
 
 		// Group the stocks by id to only have to fetch the data once more.
 		const groupedTrades = this.groupTradesByStock(trades)
@@ -294,9 +298,16 @@ class Portfolio {
 	 * @returns {object} The data added to this date to be carried into the next.
 	 */
 	checkAndAddValues(date, value, dateMap, id) {
-		const existingData = dateMap.has(date.toISOString())
-			? dateMap.get(date.toISOString())
-			: { total: 0, totalPositionValue: 0, numberOfPositionsOpen: 0, positions: [] }
+		const tempData = dateMap.get(date.toISOString())
+		const existingData =
+			!tempData || (typeof tempData === 'object' && Object.keys(tempData).length < 1)
+				? {
+						total: 0,
+						totalPositionValue: 0,
+						numberOfPositionsOpen: 0,
+						positions: []
+				  }
+				: tempData
 
 		existingData.positions.push({ id, value })
 		existingData.totalPositionValue += value
@@ -332,18 +343,15 @@ class Portfolio {
 	/**
 	 * Generates a map with all the dates since the first trade was taken.
 	 * It has empty objects as values.
-	 * @param {Trade} firstTrade The first trade taken in the backtest, which is the base for the Map at the moment.
 	 * @param {object} deps dependencies
 	 * @param {DataFetcher} deps.DataFetcher The DataFetcher class
 	 * @returns {Map|null}
 	 */
-	async getDateMap(firstTrade, { DataFetcher = this.DataFetcher } = {}) {
-		// * Using a naïve approach and assuming that the stock that was the first trade hasn't been delisted.
-		// TODO Remake this to use an index instead when able to.
+	async getDateMap({ DataFetcher = this.DataFetcher } = {}) {
 		const df = new DataFetcher()
 
 		const stock = await df.fetchStock({
-			id: firstTrade.stock.id,
+			id: 19002,
 			fieldString: 'priceData{ date }'
 		})
 
