@@ -49,7 +49,7 @@ class DataFetcher {
 	} = {}) {
 		const query = `
 		{
-			stocks{
+			stocks(type: "stock"){
 				${fieldString}
 			}
 		}`
