@@ -1,5 +1,7 @@
 import Strategy from './Strategy'
 import Signal from '../Signal'
+import _DataFetcher from '../../backendModules/DataFetcher'
+import _TechnicalAnalyst from '../TechnicalAnalyst'
 
 /**
  * "20% Flipper" by Nick Radge.
@@ -17,8 +19,17 @@ class Flipper extends Strategy {
 	 * @param {Object} params.rules the rules for the strategy. See `defaultRules` for the ones that are available.
 	 * @returns {Flipper}
 	 */
-	constructor({ strategyName = 'flipper', initialContext = {}, rules = {} } = {}) {
+	constructor({
+		strategyName = 'flipper',
+		initialContext = {},
+		rules = {},
+		DataFetcher = _DataFetcher,
+		TechnicalAnalyst = _TechnicalAnalyst
+	} = {}) {
 		super({ strategyName, initialContext })
+
+		this.technicalAnalyst = new TechnicalAnalyst()
+		this.dataFetcher = new DataFetcher()
 
 		/**
 		 * These are the default rules for the strategy. Will probably not be overwritten very often.
@@ -27,7 +38,11 @@ class Flipper extends Strategy {
 			entryFactor: 6 / 5,
 			exitFactor: 5 / 6,
 			entryInBearishRegime: false,
-			bearishRegimeExitFactor: 11 / 12
+			bearishRegimeExitFactor: 11 / 12,
+			regimeSecurityID: 19002,
+			regimeLookback: 200,
+			regimeOperator: '>=',
+			regimeType: 'SMA'
 		}
 
 		/**
@@ -38,7 +53,7 @@ class Flipper extends Strategy {
 			highPrice: null,
 			lowPrice: null,
 			triggerPrice: null,
-			regime: 'bull'
+			regime: null
 		}
 
 		this.rules = { ...defaultRules, ...rules } // Merge the default rules with the ones given.
@@ -56,14 +71,15 @@ class Flipper extends Strategy {
 	 */
 	processBar({ signalBar, currentBar, stock, context }) {
 		// Update the context with the latest highs and lows
-		let newContext = this.setHighLowPrices({
-			highPrice: context.highPrice,
-			lowPrice: context.lowPrice,
-			signalBar
-		})
-
-		// Check the regime filter
-		newContext.regime = this.updateRegime()
+		let newContext = {
+			...this.setHighLowPrices({
+				highPrice: context.highPrice,
+				lowPrice: context.lowPrice,
+				signalBar
+			}),
+			regime: this.updateRegime(signalBar), // Check the regime filter
+			lastSignal: context.lastSignal
+		}
 
 		// Check if the signalbar triggered anything. Will be null if no signal is given which is ok to return as it is
 		const { signal, context: maybeUpdatedContext } = this.checkForTrigger({
@@ -71,6 +87,8 @@ class Flipper extends Strategy {
 			lowPrice: newContext.lowPrice,
 			currentBias: context.bias,
 			triggerPrice: context.triggerPrice,
+			lastSignal: newContext.lastSignal,
+			regime: newContext.regime,
 			signalBar,
 			currentBar,
 			stock
@@ -78,6 +96,12 @@ class Flipper extends Strategy {
 
 		// The context may be updated by the triggering so using the spread to overwrite old values.
 		newContext = { ...newContext, ...maybeUpdatedContext }
+
+		if (signal) {
+			newContext.lastSignal = signal
+
+			// console.log(newContext)
+		}
 
 		return { signal, context: newContext }
 	}
@@ -120,8 +144,58 @@ class Flipper extends Strategy {
 		return output
 	}
 
-	updateRegime() {
-		return 'bull'
+	async createRegimeFilter(
+		{ id, type, lookback, operator },
+		{ dataFetcher = this.dataFetcher, technicalAnalyst = this.technicalAnalyst } = {}
+	) {
+		const indexData = await dataFetcher.fetchStock({
+			id,
+			fieldString: 'id, priceData{close, date}'
+		})
+
+		const movingAverage = technicalAnalyst.movingAverage({
+			field: 'close',
+			lookback,
+			data: indexData.priceData,
+			type,
+			includeField: true
+		})
+
+		const comparator = this.createComparator(operator)
+
+		const output = new Map()
+		for (const [date, { price, average }] of movingAverage) {
+			output.set(date, comparator(price, average))
+		}
+
+		const last = [...output.entries()]
+
+		console.log('Latest regime', last[last.length - 1])
+
+		this.regimeFilter = output
+	}
+
+	createComparator(operator) {
+		return (price, average) => {
+			let condition
+			if (!price || !average) {
+				return null
+			} else if (operator === '==') {
+				condition = price === average
+			} else if (operator === '<=') {
+				condition = price <= average
+			} else if (operator === '>=') {
+				condition = price >= average
+			} else {
+				throw new Error('Invalid operator')
+			}
+
+			return condition ? 'bull' : 'bear'
+		}
+	}
+
+	updateRegime(signalBar) {
+		return this.regimeFilter.get(signalBar.date.toISOString())
 	}
 
 	/**
@@ -130,6 +204,7 @@ class Flipper extends Strategy {
 	 * @param {Number} params.highPrice The highest price since reset
 	 * @param {Number} params.lowPrice The lowest price since reset
 	 * @param {String} params.currentBias "bull", "neutral" or "bear" to know how to handle price action
+	 * @param {String} params.regime "bull" or "bear" to know how to handle price action. Depends on larger index price action.
 	 * @param {Object} params.signalBar "yesterdays" bar to check for signal to avoid look-ahead-bias.
 	 * @param {Object} params.currentBar "today" Will be used to give date and price (open) for entry/exit.
 	 * @param {Stock} params.stock The stock being tested. Should be the summary of the stock and not with the whole priceData array to keep size down.
@@ -142,6 +217,8 @@ class Flipper extends Strategy {
 		currentBias,
 		signalBar,
 		currentBar,
+		lastSignal,
+		regime,
 		stock,
 		triggerPrice
 	}) {
@@ -154,7 +231,6 @@ class Flipper extends Strategy {
 
 		let signal = null
 
-		// TODO Add check for regime as well.
 		if (currentBias === 'bear' || currentBias === 'neutral') {
 			if (signalBar.close >= lowPrice * this.rules.entryFactor) {
 				// Update the context
@@ -162,35 +238,42 @@ class Flipper extends Strategy {
 				context.highPrice = signalBar.close
 				context.triggerPrice = context.highPrice * this.rules.exitFactor
 
-				// Create the signal instance
-				signal = new Signal({
-					stock,
-					price: currentBar.open,
-					date: currentBar.date,
-					action: 'buy',
-					type: 'enter'
-				})
+				if (regime === 'bull' || this.rules.entryInBearishRegime) {
+					// Create the signal instance
+					signal = new Signal({
+						stock,
+						price: currentBar.open,
+						date: currentBar.date,
+						action: 'buy',
+						type: 'enter'
+					})
+				}
 			} else {
 				// IF no signal was generated the trigger price should still be updated.
 				context.triggerPrice = context.lowPrice * this.rules.entryFactor
 			}
 		} else if (currentBias === 'bull') {
-			// TODO Add regime check here to know what factor to use
 			// Exit signal:
-			if (signalBar.close <= highPrice * this.rules.exitFactor) {
+			if (
+				signalBar.close <=
+				highPrice *
+					(regime === 'bull' ? this.rules.exitFactor : this.rules.bearishRegimeExitFactor)
+			) {
 				// Update context
 				context.bias = 'bear'
 				context.lowPrice = signalBar.close
 				context.triggerPrice = context.lowPrice * this.rules.entryFactor
 
-				// Create the signal instance
-				signal = new Signal({
-					stock,
-					price: currentBar.open,
-					date: currentBar.date,
-					action: 'sell',
-					type: 'exit'
-				})
+				if (lastSignal && lastSignal.type === 'enter') {
+					// Create the signal instance
+					signal = new Signal({
+						stock,
+						price: currentBar.open,
+						date: currentBar.date,
+						action: 'sell',
+						type: 'exit'
+					})
+				}
 			} else {
 				// IF no signal was generated the trigger price should still be updated.
 				context.triggerPrice = context.highPrice * this.rules.exitFactor

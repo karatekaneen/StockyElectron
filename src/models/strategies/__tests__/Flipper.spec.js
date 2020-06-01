@@ -1,20 +1,22 @@
 import Flipper from '../Flipper'
 import Signal from '../../Signal'
+import DataFetcher from '../../../backendModules/DataFetcher'
+jest.mock('../../../backendModules/DataFetcher')
 jest.mock('../../Signal')
 
-beforeEach(() => {
-	Signal.mockClear()
-})
-
 describe('Flipper Strategy', () => {
+	let f
+	beforeEach(() => {
+		Signal.mockClear()
+		DataFetcher.mockClear()
+
+		f = new Flipper()
+	})
 	it('Has a working constructor', () => {
-		const f = new Flipper()
 		expect(f instanceof Flipper).toBe(true)
 	})
 
 	it('Uses default rules if none provided', () => {
-		const f = new Flipper()
-
 		expect(f.rules.entryFactor).toBe(1.2)
 		expect(f.rules.entryInBearishRegime).toBe(false)
 	})
@@ -27,22 +29,41 @@ describe('Flipper Strategy', () => {
 	})
 
 	it('Uses default context if none is provided', () => {
-		const f = new Flipper()
-
 		expect(f.context.bias).toBe('neutral')
-		expect(f.context.regime).toBe('bull')
+		expect(f.context.regime).toBe(null)
 	})
 
 	it('Can overwrite single context property in constructor', () => {
 		const f = new Flipper({ initialContext: { bias: 'bull' } })
 
 		expect(f.context.bias).toBe('bull')
-		expect(f.context.regime).toBe('bull')
+		expect(f.context.regime).toBe(null)
+	})
+
+	it('Calls to create regimeFilter', async () => {
+		DataFetcher.mockImplementationOnce(() => {
+			return {
+				fetchStock: jest.fn().mockResolvedValue({})
+			}
+		})
+
+		f.createRegimeFilter = jest.fn()
+		f.extractData = jest.fn().mockReturnValue({ startIndex: 2, endIndex: 4 })
+		await f.test({
+			stock: { priceData: [] },
+			dataFetcher: { fetchStock: jest.fn().mockResolvedValue({ priceData: [] }) }
+		})
+
+		expect(f.createRegimeFilter).toHaveBeenCalledWith({
+			id: f.rules.regimeSecurityID,
+			lookback: f.rules.regimeLookback,
+			operator: f.rules.regimeOperator,
+			type: f.rules.regimeType
+		})
 	})
 
 	describe('Process Bar', () => {
 		it('Calls to update high & low prices', () => {
-			const f = new Flipper()
 			f.setHighLowPrices = jest.fn().mockReturnValue({ highPrice: 200, lowPrice: 100 })
 			f.updateRegime = jest.fn().mockReturnValue('bull')
 			f.checkForTrigger = jest.fn().mockReturnValue({ signal: null, bias: 'bull' })
@@ -62,7 +83,6 @@ describe('Flipper Strategy', () => {
 		})
 
 		it('Calls to update regime', () => {
-			const f = new Flipper()
 			f.setHighLowPrices = jest.fn().mockReturnValue({ highPrice: 200, lowPrice: 100 })
 			f.updateRegime = jest.fn().mockReturnValue('bull')
 			f.checkForTrigger = jest.fn().mockReturnValue({ signal: null, bias: 'bull' })
@@ -78,7 +98,6 @@ describe('Flipper Strategy', () => {
 		})
 
 		it('Checks if signal should be sent', () => {
-			const f = new Flipper()
 			f.setHighLowPrices = jest.fn().mockReturnValue({ highPrice: 200, lowPrice: 100 })
 			f.updateRegime = jest.fn().mockReturnValue('bull')
 			f.checkForTrigger = jest.fn().mockReturnValue({ signal: null, bias: 'bull' })
@@ -94,6 +113,8 @@ describe('Flipper Strategy', () => {
 				currentBar: { b: 'this is my current bar' },
 				currentBias: 'bear',
 				highPrice: 200,
+				regime: 'bull',
+				lastSignal: undefined,
 				lowPrice: 100,
 				signalBar: { a: 'this is my signal' },
 				stock: { name: 'STONK' }
@@ -101,7 +122,6 @@ describe('Flipper Strategy', () => {
 		})
 
 		it('Returns bias from checkForTrigger', () => {
-			const f = new Flipper()
 			f.setHighLowPrices = jest.fn().mockReturnValue({ highPrice: 200, lowPrice: 100 })
 			f.updateRegime = jest.fn().mockReturnValue('bull')
 			f.checkForTrigger = jest.fn().mockReturnValue({ signal: null, context: { bias: 'bull' } })
@@ -117,7 +137,6 @@ describe('Flipper Strategy', () => {
 		})
 
 		it('Adds new triggerPrice to context', () => {
-			const f = new Flipper()
 			f.setHighLowPrices = jest.fn().mockReturnValue({ highPrice: 200, lowPrice: 100 })
 			f.updateRegime = jest.fn().mockReturnValue('bull')
 			f.checkForTrigger = jest
@@ -135,7 +154,6 @@ describe('Flipper Strategy', () => {
 		})
 
 		it('Returns updated context', () => {
-			const f = new Flipper()
 			f.setHighLowPrices = jest.fn().mockReturnValue({ highPrice: 200, lowPrice: 100 })
 			f.updateRegime = jest.fn().mockReturnValue('bull')
 			f.checkForTrigger = jest.fn().mockReturnValue({ signal: null, context: { bias: 'bull' } })
@@ -156,7 +174,6 @@ describe('Flipper Strategy', () => {
 		})
 
 		it('Returns signal as null if none is triggered', () => {
-			const f = new Flipper()
 			f.setHighLowPrices = jest.fn().mockReturnValue({ highPrice: 200, lowPrice: 100 })
 			f.updateRegime = jest.fn().mockReturnValue('bull')
 			f.checkForTrigger = jest.fn().mockReturnValue({ signal: null, bias: 'bull' })
@@ -172,7 +189,6 @@ describe('Flipper Strategy', () => {
 		})
 
 		it('Returns signal if it should', () => {
-			const f = new Flipper()
 			f.setHighLowPrices = jest.fn().mockReturnValue({ highPrice: 200, lowPrice: 100 })
 			f.updateRegime = jest.fn().mockReturnValue('bull')
 			f.checkForTrigger = jest
@@ -198,8 +214,6 @@ describe('Flipper Strategy', () => {
 
 	describe('Set high / low prices', () => {
 		it('Updates high if current close is higher than highPrice && not using high', () => {
-			const f = new Flipper()
-
 			const signalBar = {
 				open: 100,
 				high: 200,
@@ -212,8 +226,6 @@ describe('Flipper Strategy', () => {
 		})
 
 		it('Does not update highPrice if current is lower', () => {
-			const f = new Flipper()
-
 			const signalBar = {
 				open: 100,
 				high: 200,
@@ -226,8 +238,6 @@ describe('Flipper Strategy', () => {
 		})
 
 		it('Updates high if current high is higher than highPrice && using high', () => {
-			const f = new Flipper()
-
 			const signalBar = {
 				open: 100,
 				high: 200,
@@ -245,8 +255,6 @@ describe('Flipper Strategy', () => {
 		})
 
 		it('Sets the highPrice to current close if highPrice is null && not using high', () => {
-			const f = new Flipper()
-
 			const signalBar = {
 				open: 100,
 				high: 200,
@@ -259,8 +267,6 @@ describe('Flipper Strategy', () => {
 		})
 
 		it('Sets the highPrice to current close if highPrice is null && not using high', () => {
-			const f = new Flipper()
-
 			const signalBar = {
 				open: 100,
 				high: 200,
@@ -279,8 +285,6 @@ describe('Flipper Strategy', () => {
 
 		// Low
 		it('Updates low if current close is lower than lowPrice && not using low', () => {
-			const f = new Flipper()
-
 			const signalBar = {
 				open: 100,
 				high: 100,
@@ -293,8 +297,6 @@ describe('Flipper Strategy', () => {
 		})
 
 		it('Does not update lowPrice if current is higher', () => {
-			const f = new Flipper()
-
 			const signalBar = {
 				open: 100,
 				high: 100,
@@ -307,8 +309,6 @@ describe('Flipper Strategy', () => {
 		})
 
 		it('Updates low if current low is lower than lowPrice && using low', () => {
-			const f = new Flipper()
-
 			const signalBar = {
 				open: 100,
 				high: 100,
@@ -326,8 +326,6 @@ describe('Flipper Strategy', () => {
 		})
 
 		it('Sets the lowPrice to current close if lowPrice is null && not using low', () => {
-			const f = new Flipper()
-
 			const signalBar = {
 				open: 100,
 				high: 100,
@@ -340,8 +338,6 @@ describe('Flipper Strategy', () => {
 		})
 
 		it('Sets the lowPrice to current close if lowPrice is null && not using low', () => {
-			const f = new Flipper()
-
 			const signalBar = {
 				open: 100,
 				high: 100,
@@ -364,8 +360,6 @@ describe('Flipper Strategy', () => {
 
 		describe('Bear/Neutral initial bias', () => {
 			it('Sets bias to bull if long entry triggered when bias is bearish', () => {
-				const f = new Flipper()
-
 				const { context } = f.checkForTrigger({
 					highPrice: 200,
 					lowPrice: 100,
@@ -382,8 +376,6 @@ describe('Flipper Strategy', () => {
 			})
 
 			it('Does not change bias from bear to bull without trigger', () => {
-				const f = new Flipper()
-
 				const { context } = f.checkForTrigger({
 					highPrice: 200,
 					lowPrice: 100,
@@ -400,8 +392,6 @@ describe('Flipper Strategy', () => {
 			})
 
 			it('Sets bias to bull if long entry triggered when bias is neutral', () => {
-				const f = new Flipper()
-
 				const { context } = f.checkForTrigger({
 					highPrice: 200,
 					lowPrice: 100,
@@ -418,8 +408,6 @@ describe('Flipper Strategy', () => {
 			})
 
 			it('Resets high price when getting long entry trigger', () => {
-				const f = new Flipper()
-
 				const { context } = f.checkForTrigger({
 					highPrice: 200,
 					lowPrice: 100,
@@ -436,8 +424,6 @@ describe('Flipper Strategy', () => {
 			})
 
 			it('Sets triggerPrice to stop-loss level when getting long entry trigger', () => {
-				const f = new Flipper()
-
 				const { context } = f.checkForTrigger({
 					highPrice: 200,
 					lowPrice: 100,
@@ -454,12 +440,11 @@ describe('Flipper Strategy', () => {
 			})
 
 			it('Generates Signal instance if long entry trigger', () => {
-				const f = new Flipper()
-
 				f.checkForTrigger({
 					highPrice: 200,
 					lowPrice: 100,
 					currentBias: 'bear',
+					regime: 'bull',
 					signalBar: { close: 120 },
 					triggerPrice: null,
 					currentBar: {
@@ -472,12 +457,11 @@ describe('Flipper Strategy', () => {
 			})
 
 			it('Creates Signal instance with the data from the day after', () => {
-				const f = new Flipper()
-
 				f.checkForTrigger({
 					highPrice: 200,
 					lowPrice: 100,
 					currentBias: 'bear',
+					regime: 'bull',
 					signalBar: { close: 120, open: 100, date: new Date('2019-12-12') },
 					triggerPrice: null,
 					currentBar: {
@@ -493,12 +477,11 @@ describe('Flipper Strategy', () => {
 			})
 
 			it('returns Signal instance if created', () => {
-				const f = new Flipper()
-
 				const { signal } = f.checkForTrigger({
 					highPrice: 200,
 					lowPrice: 100,
 					currentBias: 'bear',
+					regime: 'bull',
 					signalBar: { close: 120 },
 					triggerPrice: null,
 					currentBar: {
@@ -511,12 +494,11 @@ describe('Flipper Strategy', () => {
 			})
 
 			it('sets triggerPrice even if no long entry signal is triggered', () => {
-				const f = new Flipper()
-
 				const { context } = f.checkForTrigger({
 					highPrice: 200,
 					lowPrice: 100,
 					currentBias: 'bear',
+					regime: 'bull',
 					signalBar: { close: 108 },
 					triggerPrice: null,
 					currentBar: {
@@ -533,12 +515,11 @@ describe('Flipper Strategy', () => {
 
 		describe('Bull initial bias', () => {
 			it('Sets bias to bear if long exit triggered when bias is bullish', () => {
-				const f = new Flipper()
-
 				const { context } = f.checkForTrigger({
 					highPrice: 100,
 					lowPrice: 50,
 					currentBias: 'bull',
+					regime: 'bull',
 					signalBar: { close: 80 },
 					triggerPrice: null,
 					currentBar: {
@@ -551,11 +532,10 @@ describe('Flipper Strategy', () => {
 			})
 
 			it('Does not change bias from bear to bull without trigger', () => {
-				const f = new Flipper()
-
 				const { context } = f.checkForTrigger({
 					highPrice: 120,
 					lowPrice: 50,
+					regime: 'bull',
 					currentBias: 'bull',
 					signalBar: { close: 100.1 },
 					triggerPrice: null,
@@ -569,11 +549,10 @@ describe('Flipper Strategy', () => {
 			})
 
 			it('Resets low price when getting long exit trigger', () => {
-				const f = new Flipper()
-
 				const { context } = f.checkForTrigger({
 					highPrice: 120,
 					lowPrice: 100,
+					regime: 'bull',
 					currentBias: 'bull',
 					signalBar: { close: 99 },
 					triggerPrice: null,
@@ -587,11 +566,10 @@ describe('Flipper Strategy', () => {
 			})
 
 			it('Sets triggerPrice to entry level when getting long exit trigger', () => {
-				const f = new Flipper()
-
 				const { context } = f.checkForTrigger({
 					highPrice: 120,
 					lowPrice: 100,
+					regime: 'bull',
 					currentBias: 'bull',
 					signalBar: { close: 99 },
 					triggerPrice: null,
@@ -605,8 +583,25 @@ describe('Flipper Strategy', () => {
 			})
 
 			it('Generates Signal instance if long exit trigger', () => {
-				const f = new Flipper()
+				f.checkForTrigger({
+					highPrice: 120,
+					lowPrice: 99,
+					currentBias: 'bull',
+					signalBar: { close: 99 },
+					triggerPrice: null,
+					lastSignal: {
+						type: 'enter'
+					},
+					currentBar: {
+						open: 125,
+						date: new Date('2019-12-13')
+					}
+				})
 
+				expect(Signal).toHaveBeenCalledTimes(1)
+			})
+
+			it('Does not create signal if last signal wasnt an entry', () => {
 				f.checkForTrigger({
 					highPrice: 120,
 					lowPrice: 99,
@@ -619,18 +614,20 @@ describe('Flipper Strategy', () => {
 					}
 				})
 
-				expect(Signal).toHaveBeenCalledTimes(1)
+				expect(Signal).toHaveBeenCalledTimes(0)
 			})
 
 			it('Creates Signal instance with the data from the day after', () => {
-				const f = new Flipper()
-
 				f.checkForTrigger({
 					highPrice: 120,
 					lowPrice: 99,
+					regime: 'bull',
 					currentBias: 'bull',
 					signalBar: { close: 99, open: 100, date: new Date('2019-12-12') },
 					triggerPrice: null,
+					lastSignal: {
+						type: 'enter'
+					},
 					currentBar: {
 						open: 101,
 						date: new Date('2019-12-13'),
@@ -644,14 +641,15 @@ describe('Flipper Strategy', () => {
 			})
 
 			it('returns Signal instance if created', () => {
-				const f = new Flipper()
-
 				const { signal } = f.checkForTrigger({
 					highPrice: 120,
 					lowPrice: 100,
 					currentBias: 'bull',
 					signalBar: { close: 99 },
 					triggerPrice: null,
+					lastSignal: {
+						type: 'enter'
+					},
 					currentBar: {
 						open: 125,
 						date: new Date('2019-12-13')
@@ -662,14 +660,16 @@ describe('Flipper Strategy', () => {
 			})
 
 			it('sets triggerPrice even if no long entry signal is triggered', () => {
-				const f = new Flipper()
-
 				const { context } = f.checkForTrigger({
 					highPrice: 120,
 					lowPrice: 50,
 					currentBias: 'bull',
 					signalBar: { close: 108 },
+					regime: 'bull',
 					triggerPrice: null,
+					lastSignal: {
+						type: 'enter'
+					},
 					currentBar: {
 						open: 125,
 						date: new Date('2019-12-13')
@@ -680,6 +680,203 @@ describe('Flipper Strategy', () => {
 			})
 
 			it.todo('Should check regime before deciding what exitfactor to use')
+		})
+	})
+
+	describe('Create Regime filter', () => {
+		let f, fetchStock, mockFetcher, priceData, movingAverage
+		const validRequest = { id: 12345, type: 'SMA', lookback: 200, operator: '>=' }
+
+		beforeEach(() => {
+			movingAverage = jest.fn().mockReturnValue(new Map())
+			priceData = new Array(100).fill(0).map((_, i) => ({ close: i, date: new Date(i) }))
+			fetchStock = jest.fn().mockResolvedValue({ id: 12345, priceData })
+
+			mockFetcher = {
+				fetchStock
+			}
+			f = new Flipper()
+		})
+
+		it('Fetches data for the id specified', async () => {
+			await f.createRegimeFilter(validRequest, {
+				dataFetcher: mockFetcher,
+				technicalAnalyst: { movingAverage }
+			})
+
+			expect(fetchStock).toHaveBeenCalledWith({
+				id: validRequest.id,
+				fieldString: 'id, priceData{close, date}'
+			})
+		})
+
+		it('Calls to create moving average with the data fetched and the lookback period', async () => {
+			await f.createRegimeFilter(validRequest, {
+				dataFetcher: mockFetcher,
+				technicalAnalyst: { movingAverage }
+			})
+
+			expect(movingAverage).toHaveBeenCalledWith({
+				field: 'close',
+				lookback: 200,
+				data: priceData,
+				type: 'SMA',
+				includeField: true
+			})
+		})
+
+		it('Returns map with dates as keys', async () => {
+			const mockReturn = new Map()
+			for (let i = 1; i <= 10; i++) {
+				mockReturn.set(new Date(i * 1000000000).toISOString(), { price: i * 2, average: i })
+			}
+
+			movingAverage.mockReturnValue(mockReturn)
+
+			await f.createRegimeFilter(validRequest, {
+				dataFetcher: mockFetcher,
+				technicalAnalyst: { movingAverage }
+			})
+
+			expect([...f.regimeFilter.keys()]).toEqual([
+				'1970-01-12T13:46:40.000Z',
+				'1970-01-24T03:33:20.000Z',
+				'1970-02-04T17:20:00.000Z',
+				'1970-02-16T07:06:40.000Z',
+				'1970-02-27T20:53:20.000Z',
+				'1970-03-11T10:40:00.000Z',
+				'1970-03-23T00:26:40.000Z',
+				'1970-04-03T14:13:20.000Z',
+				'1970-04-15T04:00:00.000Z',
+				'1970-04-26T17:46:40.000Z'
+			])
+		})
+
+		it('sets "bull" if price > ma and operator is ">="', async () => {
+			const mockReturn = new Map()
+			for (let i = 1; i <= 10; i++) {
+				mockReturn.set(new Date(i * 1000000000).toISOString(), { price: i * 2, average: i })
+			}
+
+			movingAverage.mockReturnValue(mockReturn)
+
+			await f.createRegimeFilter(validRequest, {
+				dataFetcher: mockFetcher,
+				technicalAnalyst: { movingAverage }
+			})
+
+			expect([...f.regimeFilter.values()].every(value => value === 'bull')).toBe(true)
+		})
+
+		it('sets "bear" if price < ma and operator is ">="', async () => {
+			const mockReturn = new Map()
+			for (let i = 1; i <= 10; i++) {
+				mockReturn.set(new Date(i * 1000000000).toISOString(), { price: i, average: i * 2 })
+			}
+
+			movingAverage.mockReturnValue(mockReturn)
+
+			await f.createRegimeFilter(validRequest, {
+				dataFetcher: mockFetcher,
+				technicalAnalyst: { movingAverage }
+			})
+
+			expect([...f.regimeFilter.values()].every(value => value === 'bear')).toBe(true)
+		})
+
+		it('sets "bull" if price < ma and operator is "<="', async () => {
+			const mockReturn = new Map()
+			for (let i = 1; i <= 10; i++) {
+				mockReturn.set(new Date(i * 1000000000).toISOString(), { price: i, average: i * 2 })
+			}
+
+			movingAverage.mockReturnValue(mockReturn)
+
+			await f.createRegimeFilter(
+				{ ...validRequest, operator: '<=' },
+				{
+					dataFetcher: mockFetcher,
+					technicalAnalyst: { movingAverage }
+				}
+			)
+
+			expect([...f.regimeFilter.values()].every(value => value === 'bull')).toBe(true)
+		})
+
+		it('sets bear if price > ma and operator is "<="', async () => {
+			const mockReturn = new Map()
+			for (let i = 1; i <= 10; i++) {
+				mockReturn.set(new Date(i * 1000000000).toISOString(), { price: i + 1, average: i })
+			}
+
+			movingAverage.mockReturnValue(mockReturn)
+
+			await f.createRegimeFilter(
+				{ ...validRequest, operator: '<=' },
+				{
+					dataFetcher: mockFetcher,
+					technicalAnalyst: { movingAverage }
+				}
+			)
+
+			expect([...f.regimeFilter.values()].every(value => value === 'bear')).toBe(true)
+		})
+
+		it('sets "bull" if price == ma and operator is "=="', async () => {
+			const mockReturn = new Map()
+			for (let i = 1; i <= 10; i++) {
+				mockReturn.set(new Date(i * 1000000000).toISOString(), { price: i, average: i })
+			}
+
+			movingAverage.mockReturnValue(mockReturn)
+
+			await f.createRegimeFilter(
+				{ ...validRequest, operator: '==' },
+				{
+					dataFetcher: mockFetcher,
+					technicalAnalyst: { movingAverage }
+				}
+			)
+
+			expect([...f.regimeFilter.values()].every(value => value === 'bull')).toBe(true)
+		})
+
+		it('sets bear if price != ma and operator is "=="', async () => {
+			const mockReturn = new Map()
+			for (let i = 1; i <= 10; i++) {
+				mockReturn.set(new Date(i * 1000000000).toISOString(), { price: i + 1, average: i })
+			}
+
+			movingAverage.mockReturnValue(mockReturn)
+
+			await f.createRegimeFilter(
+				{ ...validRequest, operator: '==' },
+				{
+					dataFetcher: mockFetcher,
+					technicalAnalyst: { movingAverage }
+				}
+			)
+
+			expect([...f.regimeFilter.values()].every(value => value === 'bear')).toBe(true)
+		})
+
+		it('sets null if there is no ma', async () => {
+			const mockReturn = new Map()
+			for (let i = 1; i <= 10; i++) {
+				mockReturn.set(new Date(i * 1000000000).toISOString(), { price: i })
+			}
+
+			movingAverage.mockReturnValue(mockReturn)
+
+			await f.createRegimeFilter(
+				{ ...validRequest, operator: '==' },
+				{
+					dataFetcher: mockFetcher,
+					technicalAnalyst: { movingAverage }
+				}
+			)
+
+			expect([...f.regimeFilter.values()].every(value => value === null)).toBe(true)
 		})
 	})
 

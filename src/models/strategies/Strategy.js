@@ -1,6 +1,7 @@
 import _Signal from '../Signal'
 import _Trade from '../Trade'
 import DateSearcher from '../../utils/DateSearcher'
+import _DataFetcher from '../../backendModules/DataFetcher'
 
 /**
  * Class that tests a set of data given a set of rules. Somewhat of a parent class to be extended.
@@ -22,9 +23,11 @@ class Strategy {
 		signalFunction,
 		openPositionPolicy = 'conservative',
 		Signal = _Signal,
-		Trade = _Trade
+		Trade = _Trade,
+		DataFetcher = _DataFetcher
 	} = {}) {
 		this.Signal = Signal
+		this.dataFetcher = new DataFetcher()
 		this.Trade = Trade
 		this.searchForDate = DateSearcher
 		this.context = initialContext
@@ -40,7 +43,6 @@ class Strategy {
 	 * Output from the test function
 	 * @typedef TestOutput
 	 * @property {Array<Signal>} signals All the signals that the test generated
-	 * @property {Array<Object>} contextHistory The context that got passed from bar to bar. Useful to creaate charts with the signals visualized
 	 * @property {Object} context The context as it was on the last bar
 	 * @property {Object|null} pendingSignal If a signal was created on the last day as the test ended it is marked as pending. Useful for live trading to know what to execute the day after.
 	 * @property {Array<Trade>} trades The trades that the test generated.
@@ -56,15 +58,22 @@ class Strategy {
 	 * @param {Date} params.endDate The date to end the test. Defaults to last date
 	 * @param {Object} params.initialContext If any initial context should be used it can be passed here.
 	 * @returns {TestOutput}
-	 * @todo Make async to avoid blocking?
 	 * @todo It may be a good idea to refactor to pass all the data and index instead to allow for more complex calculations etc. OR make the function in the same way as `processBar` to force each strategy to implement own test function?
 	 */
-	test({ stock, startDate = null, endDate = null, initialContext = this.context } = {}) {
-		// TODO Make async to avoid blocking?
+	async test({
+		stock,
+		startDate = null,
+		endDate = null,
+		initialContext = this.context,
+		dataFetcher = this.dataFetcher
+	} = {}) {
 		// TODO It may be a good idea to refactor to pass all the data and index instead to allow for more complex calculations etc.
 		// ? Maybe the better way is to add ability to override the default test function
 
-		const { priceData, ...stockSummary } = stock
+		const { priceData } = await dataFetcher.fetchStock({
+			id: stock.id,
+			fieldString: 'priceData{open, high, low, close, date}'
+		})
 		let openTrade = null
 
 		// Get the start and end index of the data to be tested
@@ -74,27 +83,28 @@ class Strategy {
 			endDate
 		})
 
+		if (!this.regimeFilter) {
+			await this.createRegimeFilter({
+				id: this.rules.regimeSecurityID,
+				type: this.rules.regimeType,
+				lookback: this.rules.regimeLookback,
+				operator: this.rules.regimeOperator
+			})
+		}
 		const testData = priceData.slice(startIndex, endIndex + 1) // Add 1 to include the last
 
 		// Run the test in a reduce:
-		const {
-			signals,
-			contextHistory,
-			context,
-			pendingSignal,
-			closeOpenPosition
-		} = testData.reduce(
+		const { signals, context, pendingSignal, closeOpenPosition } = testData.reduce(
 			(aggregate, currentBar, index, originalArr) => {
 				if (index > 0) {
 					const { signal, context: newContext } = this.processBar({
 						signalBar: originalArr[index - 1],
 						currentBar,
-						stock: stockSummary,
+						stock,
 						context: aggregate.context
 					})
 
 					// Update context
-					aggregate.contextHistory.push(newContext)
 					aggregate.context = newContext
 
 					// Add signal to array if there is any
@@ -107,7 +117,7 @@ class Strategy {
 						const { signal: pendingSignal } = this.processBar({
 							signalBar: originalArr[index],
 							currentBar: { open: null, high: null, low: null, close: null, date: null },
-							stock: stockSummary,
+							stock,
 							context: aggregate.context
 						})
 
@@ -120,7 +130,7 @@ class Strategy {
 							signals: aggregate.signals,
 							currentBar,
 							context: aggregate.context,
-							stock: stockSummary
+							stock
 						})
 					}
 				}
@@ -131,7 +141,6 @@ class Strategy {
 			{
 				signals: [],
 				context: initialContext,
-				contextHistory: [initialContext],
 				pendingSignal: null,
 				closeOpenPosition: null
 			}
@@ -141,7 +150,7 @@ class Strategy {
 			signals,
 			priceData,
 			closeOpenPosition,
-			stock: stockSummary
+			stock
 		})
 
 		// Separate the open trade in to own object as well
@@ -151,7 +160,6 @@ class Strategy {
 
 		return {
 			signals,
-			contextHistory,
 			context,
 			pendingSignal,
 			trades,
@@ -261,7 +269,7 @@ class Strategy {
 		const groupedSignals = this.groupSignals({ signals, closeOpenPosition })
 
 		// Convert the signal groups to Trade instances
-		const trades = groupedSignals.map(({ entrySignal, exitSignal }) => {
+		const trades = groupedSignals.map(([entrySignal, exitSignal]) => {
 			return new Trade({ entry: entrySignal, exit: exitSignal, stock })
 		})
 
@@ -312,6 +320,10 @@ class Strategy {
 		}
 
 		return output
+	}
+
+	createRegimeFilter() {
+		throw new Error('No regime creation function provided')
 	}
 
 	/**

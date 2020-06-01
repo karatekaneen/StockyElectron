@@ -1,41 +1,49 @@
 import Strategy from '../Strategy'
 import Signal from '../../Signal'
 import Trade from '../../Trade'
+import DataFetcher from '../../../backendModules/DataFetcher'
+jest.mock('../../../backendModules/DataFetcher')
 jest.mock('../../Signal')
 jest.mock('../../Trade')
 
-beforeEach(() => {
-	jest.clearAllMocks()
-})
-
 describe('Strategy class', () => {
-	it('Has a working constructor', () => {
-		const s = new Strategy()
+	let s
+	beforeEach(() => {
+		jest.clearAllMocks()
 
+		s = new Strategy()
+	})
+
+	it('Has a working constructor', () => {
 		expect(s instanceof Strategy).toBe(true)
 	})
 
 	it('Sets initial context', () => {
-		const s = new Strategy({ initialContext: { bias: 'BULL' } })
+		s = new Strategy({ initialContext: { bias: 'BULL' } })
 
 		expect(s.context).toEqual({ bias: 'BULL' })
 	})
 
 	it('Can take a signal function', () => {
-		const s = new Strategy({ signalFunction: jest.fn(() => 'woop') })
+		s = new Strategy({ signalFunction: jest.fn(() => 'woop') })
 
 		expect(s.processBar()).toBe('woop')
 	})
 
 	describe('Test', () => {
-		it('Calls to extract the data to be tested', () => {
-			const s = new Strategy()
+		beforeEach(() => {
+			s = new Strategy({ initialContext: null })
+
+			s.createRegimeFilter = jest.fn()
+		})
+
+		it('Calls to extract the data to be tested', async () => {
 			s.extractData = jest.fn().mockReturnValue({ startIndex: 0, endIndex: 6 })
 
 			const mockStock = { priceData: ['Array of price data'] }
 			const endDate = new Date('1995-12-17T03:24:00').toISOString()
 
-			s.test({ stock: mockStock, endDate })
+			await s.test({ stock: mockStock, endDate })
 
 			expect(s.extractData).toHaveBeenCalledWith({
 				priceData: ['Array of price data'],
@@ -44,11 +52,7 @@ describe('Strategy class', () => {
 			})
 		})
 
-		it('Checks for signal every bar', () => {
-			const s = new Strategy()
-
-			s.handleOpenPositions = jest.fn().mockReturnValue(null)
-
+		it('Checks for signal every bar', async () => {
 			s.processBar = jest.fn().mockReturnValue({ signal: null, context: null })
 
 			s.extractData = jest.fn().mockReturnValue({ startIndex: 0, endIndex: 2 })
@@ -58,14 +62,12 @@ describe('Strategy class', () => {
 			}
 			const endDate = new Date('1995-12-17T03:24:00').toISOString()
 
-			s.test({ stock: mockStock, endDate })
+			await s.test({ stock: mockStock, endDate })
 
 			expect(s.processBar).toHaveBeenCalledTimes(3) // Not calling for the first bar due to lookback but twice on the last to look for pending bars
 		})
 
-		it('Updates context every bar', () => {
-			const s = new Strategy({ initialContext: null })
-
+		it('Updates context every bar', async () => {
 			s.handleOpenPositions = jest.fn().mockReturnValue(null)
 
 			s.processBar = jest
@@ -82,7 +84,7 @@ describe('Strategy class', () => {
 			}
 			const endDate = new Date('1995-12-17T03:24:00').toISOString()
 
-			s.test({ stock: mockStock, endDate })
+			await s.test({ stock: mockStock, endDate })
 
 			expect(s.processBar.mock.calls[0][0].context).toBe(null)
 			expect(s.processBar.mock.calls[1][0].context).toEqual({ call: 'first' })
@@ -90,9 +92,7 @@ describe('Strategy class', () => {
 			expect(s.processBar.mock.calls[3][0].context).toEqual({ call: 'third' })
 		})
 
-		it('Checks for pending signals on last bar', () => {
-			const s = new Strategy({ initialContext: null })
-
+		it('Checks for pending signals on last bar', async () => {
 			s.handleOpenPositions = jest.fn().mockReturnValue(null)
 
 			s.processBar = jest
@@ -118,7 +118,7 @@ describe('Strategy class', () => {
 				endIndex: mockStock.priceData.length
 			}))
 
-			const { pendingSignal } = s.test({ stock: mockStock })
+			const { pendingSignal } = await s.test({ stock: mockStock })
 
 			expect(s.processBar).toHaveBeenCalledTimes(mockStock.priceData.length) // Skips the first bar but two times on the last
 			expect(s.processBar.mock.calls[3][0].currentBar).toEqual({
@@ -132,37 +132,7 @@ describe('Strategy class', () => {
 			expect(pendingSignal).toEqual({ name: 'buy everything' })
 		})
 
-		it('Returns historical context', () => {
-			const s = new Strategy({ initialContext: null })
-
-			s.handleOpenPositions = jest.fn().mockReturnValue(null)
-
-			s.processBar = jest
-				.fn()
-				.mockReturnValueOnce({ signal: null, context: { call: 'first' } })
-				.mockReturnValueOnce({ signal: null, context: { call: 'second' } })
-				.mockReturnValueOnce({ signal: null, context: { call: 'third' } })
-				.mockReturnValueOnce({ signal: null, context: { call: 'fourth' } })
-
-			s.extractData = jest.fn().mockReturnValue({ startIndex: 0, endIndex: 3 })
-
-			const mockStock = {
-				priceData: [{ bar: 'first' }, { bar: 'second' }, { bar: 'third' }, { bar: 'fourth' }]
-			}
-			const endDate = new Date('1995-12-17T03:24:00').toISOString()
-
-			const { contextHistory } = s.test({ stock: mockStock, endDate })
-			expect(contextHistory).toEqual([
-				null, // Initial context
-				{ call: 'first' },
-				{ call: 'second' },
-				{ call: 'third' }
-			])
-		})
-
-		it('Does not add null signals', () => {
-			const s = new Strategy({ initialContext: null })
-
+		it('Does not add null signals', async () => {
 			s.handleOpenPositions = jest.fn().mockReturnValue(null)
 
 			s.processBar = jest
@@ -184,13 +154,11 @@ describe('Strategy class', () => {
 			const mockStock = { priceData: ['Array of price data'] }
 			const endDate = new Date('1995-12-17T03:24:00').toISOString()
 
-			const { signals } = s.test({ stock: mockStock, endDate })
+			const { signals } = await s.test({ stock: mockStock, endDate })
 			expect(signals).toEqual([])
 		})
 
-		it('Adds signals to array', () => {
-			const s = new Strategy({ initialContext: null })
-
+		it('Adds signals to array', async () => {
 			s.groupSignals = jest.fn().mockReturnValue([])
 
 			s.processBar = jest
@@ -207,12 +175,11 @@ describe('Strategy class', () => {
 			}
 			const endDate = new Date('1995-12-17T03:24:00').toISOString()
 
-			const { signals } = s.test({ stock: mockStock, endDate })
+			const { signals } = await s.test({ stock: mockStock, endDate })
 			expect(signals).toEqual([{ type: 'Enter' }, { type: 'Exit' }])
 		})
 
-		it('calls to handle open positions', () => {
-			const s = new Strategy({ initialContext: null })
+		it('calls to handle open positions', async () => {
 			s.handleOpenPositions = jest.fn().mockReturnValue(null)
 
 			s.groupSignals = jest.fn().mockReturnValue([])
@@ -234,7 +201,7 @@ describe('Strategy class', () => {
 			}
 			const endDate = new Date('1995-12-17T03:24:00').toISOString()
 
-			s.test({ stock: mockStock, endDate })
+			await s.test({ stock: mockStock, endDate })
 
 			expect(s.handleOpenPositions).toHaveBeenCalledTimes(1)
 			expect(s.handleOpenPositions.mock.calls[0][0]).toEqual({
