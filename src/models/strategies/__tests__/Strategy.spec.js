@@ -43,7 +43,11 @@ describe('Strategy class', () => {
 			const mockStock = { priceData: ['Array of price data'] }
 			const endDate = new Date('1995-12-17T03:24:00').toISOString()
 
-			await s.test({ stock: mockStock, endDate })
+			await s.test({
+				stock: mockStock,
+				endDate,
+				dataFetcher: { fetchStock: jest.fn().mockResolvedValue(mockStock) }
+			})
 
 			expect(s.extractData).toHaveBeenCalledWith({
 				priceData: ['Array of price data'],
@@ -62,7 +66,11 @@ describe('Strategy class', () => {
 			}
 			const endDate = new Date('1995-12-17T03:24:00').toISOString()
 
-			await s.test({ stock: mockStock, endDate })
+			await s.test({
+				stock: mockStock,
+				endDate,
+				dataFetcher: { fetchStock: jest.fn().mockResolvedValue(mockStock) }
+			})
 
 			expect(s.processBar).toHaveBeenCalledTimes(3) // Not calling for the first bar due to lookback but twice on the last to look for pending bars
 		})
@@ -84,7 +92,11 @@ describe('Strategy class', () => {
 			}
 			const endDate = new Date('1995-12-17T03:24:00').toISOString()
 
-			await s.test({ stock: mockStock, endDate })
+			await s.test({
+				stock: mockStock,
+				endDate,
+				dataFetcher: { fetchStock: jest.fn().mockResolvedValue(mockStock) }
+			})
 
 			expect(s.processBar.mock.calls[0][0].context).toBe(null)
 			expect(s.processBar.mock.calls[1][0].context).toEqual({ call: 'first' })
@@ -118,7 +130,10 @@ describe('Strategy class', () => {
 				endIndex: mockStock.priceData.length
 			}))
 
-			const { pendingSignal } = await s.test({ stock: mockStock })
+			const { pendingSignal } = await s.test({
+				stock: mockStock,
+				dataFetcher: { fetchStock: jest.fn().mockResolvedValue(mockStock) }
+			})
 
 			expect(s.processBar).toHaveBeenCalledTimes(mockStock.priceData.length) // Skips the first bar but two times on the last
 			expect(s.processBar.mock.calls[3][0].currentBar).toEqual({
@@ -154,7 +169,11 @@ describe('Strategy class', () => {
 			const mockStock = { priceData: ['Array of price data'] }
 			const endDate = new Date('1995-12-17T03:24:00').toISOString()
 
-			const { signals } = await s.test({ stock: mockStock, endDate })
+			const { signals } = await s.test({
+				stock: mockStock,
+				endDate,
+				dataFetcher: { fetchStock: jest.fn().mockResolvedValue(mockStock) }
+			})
 			expect(signals).toEqual([])
 		})
 
@@ -175,7 +194,11 @@ describe('Strategy class', () => {
 			}
 			const endDate = new Date('1995-12-17T03:24:00').toISOString()
 
-			const { signals } = await s.test({ stock: mockStock, endDate })
+			const { signals } = await s.test({
+				stock: mockStock,
+				endDate,
+				dataFetcher: { fetchStock: jest.fn().mockResolvedValue(mockStock) }
+			})
 			expect(signals).toEqual([{ type: 'Enter' }, { type: 'Exit' }])
 		})
 
@@ -197,18 +220,26 @@ describe('Strategy class', () => {
 			})
 
 			const mockStock = {
+				name: 'HM B'
+			}
+
+			const mockPriceData = {
 				priceData: [{ bar: 'first' }, { bar: 'second' }, { bar: 'third' }, { bar: 'fourth' }]
 			}
 			const endDate = new Date('1995-12-17T03:24:00').toISOString()
 
-			await s.test({ stock: mockStock, endDate })
+			await s.test({
+				stock: mockStock,
+				endDate,
+				dataFetcher: { fetchStock: jest.fn().mockResolvedValue(mockPriceData) }
+			})
 
 			expect(s.handleOpenPositions).toHaveBeenCalledTimes(1)
 			expect(s.handleOpenPositions.mock.calls[0][0]).toEqual({
 				context: { call: 'third' },
 				currentBar: { bar: 'fourth' },
 				signals: [{ type: 'Enter' }, { type: 'Exit' }],
-				stock: {}
+				stock: { name: 'HM B' }
 			})
 		})
 
@@ -463,14 +494,8 @@ describe('Strategy class', () => {
 			const signals = [{ type: 'enter' }, { type: 'exit' }, { type: 'enter' }, { type: 'exit' }]
 
 			const mockResponse = [
-				{
-					entrySignal: { type: 'entry signal' },
-					exitSignal: { type: 'exit signal' }
-				},
-				{
-					entrySignal: { type: 'another entry signal' },
-					exitSignal: { type: 'another exit signal' }
-				}
+				[{ type: 'entry signal' }, { type: 'exit signal' }],
+				[{ type: 'another entry signal' }, { type: 'another exit signal' }]
 			]
 
 			s.groupSignals = jest.fn().mockReturnValue(mockResponse)
@@ -500,14 +525,8 @@ describe('Strategy class', () => {
 			const signals = [{ type: 'enter' }, { type: 'exit' }, { type: 'enter' }, { type: 'exit' }]
 
 			const mockResponse = [
-				{
-					entrySignal: { type: 'entry signal' },
-					exitSignal: { type: 'exit signal' }
-				},
-				{
-					entrySignal: { type: 'another entry signal' },
-					exitSignal: { type: 'another exit signal' }
-				}
+				[{ type: 'entry signal' }, { type: 'exit signal' }],
+				[{ type: 'another entry signal' }, { type: 'another exit signal' }]
 			]
 
 			s.groupSignals = jest.fn().mockReturnValue(mockResponse)
@@ -525,14 +544,8 @@ describe('Strategy class', () => {
 			const signals = [{ type: 'enter' }, { type: 'exit' }, { type: 'enter' }, { type: 'exit' }]
 
 			const mockResponse = [
-				{
-					entrySignal: { type: 'entry signal' },
-					exitSignal: { type: 'exit signal' }
-				},
-				{
-					entrySignal: { type: 'another entry signal' },
-					exitSignal: { type: 'another exit signal' }
-				}
+				[{ type: 'entry signal' }, { type: 'exit signal' }],
+				[{ type: 'another entry signal' }, { type: 'another exit signal' }]
 			]
 
 			s.groupSignals = jest.fn().mockReturnValue(mockResponse)

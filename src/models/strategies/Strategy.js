@@ -33,6 +33,7 @@ class Strategy {
 		this.context = initialContext
 		this.strategyName = strategyName
 		this.openPositionPolicy = openPositionPolicy
+		this.rules = {}
 
 		if (signalFunction) {
 			this.processBar = signalFunction

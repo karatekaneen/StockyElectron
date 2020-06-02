@@ -468,8 +468,6 @@ describe('Backtest', () => {
 		const p = new Portfolio()
 		p.generateTimeline = jest.fn()
 
-		p.generateTimeline = jest.fn()
-
 		await p.backtest({ trades: mockTrades })
 
 		expect(p.generateTimeline).toHaveBeenCalledTimes(1)
@@ -593,10 +591,10 @@ describe('Generate Timeline', () => {
 			.fn()
 			.mockReturnValue(
 				new Map([
-					['2000-05-23T22:00:00.000Z', { cashAvailable: 95108.8 }],
-					['2000-05-30T22:00:00.000Z', { cashAvailable: 90760 }],
-					['2000-06-15T22:00:00.000Z', { cashAvailable: 94514 }],
-					['2000-06-30T22:00:00.000Z', { cashAvailable: 98369.32 }]
+					['2000-05-23T22:00:00.000Z', {}],
+					['2000-05-30T22:00:00.000Z', {}],
+					['2000-06-15T22:00:00.000Z', {}],
+					['2000-06-30T22:00:00.000Z', {}]
 				])
 			)
 
@@ -641,10 +639,10 @@ describe('Generate Timeline', () => {
 			.fn()
 			.mockReturnValue(
 				new Map([
-					['2000-05-23T22:00:00.000Z', { cashAvailable: 95108.8 }],
-					['2000-05-30T22:00:00.000Z', { cashAvailable: 90760 }],
-					['2000-06-15T22:00:00.000Z', { cashAvailable: 94514 }],
-					['2000-06-30T22:00:00.000Z', { cashAvailable: 98369.32 }]
+					['2000-05-23T22:00:00.000Z', {}],
+					['2000-05-30T22:00:00.000Z', {}],
+					['2000-06-15T22:00:00.000Z', {}],
+					['2000-06-30T22:00:00.000Z', {}]
 				])
 			)
 
@@ -708,7 +706,7 @@ describe('Get Date Map', () => {
 		await p.getDateMap({ stock: { id: 123 } }, DataFetcher)
 		expect(DataFetcher.mock.instances[0].fetchStock).toHaveBeenCalledWith({
 			fieldString: 'priceData{ date }',
-			id: 123
+			id: 19002
 		})
 	})
 
