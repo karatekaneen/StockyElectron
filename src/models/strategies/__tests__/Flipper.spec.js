@@ -357,6 +357,9 @@ describe('Flipper Strategy', () => {
 
 	describe('check for trigger', () => {
 		it.todo('Should be able to generate pending signals for live trading')
+		it('Creates ranking factor and passes it in to Signal', () => {
+			expect(1).toBe(2)
+		})
 
 		describe('Bear/Neutral initial bias', () => {
 			it('Sets bias to bull if long entry triggered when bias is bearish', () => {

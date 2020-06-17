@@ -1,8 +1,9 @@
 <template>
 	<v-container>
 		<v-card>
-			<v-btn @click="testmetod">test</v-btn>
+			<v-btn @click="getSignals">signals</v-btn>
 			<v-btn @click="testAllStocks">test all</v-btn>
+			<v-btn @click="testPortfolio">test portfolio</v-btn>
 			<v-btn @click="loadStock">load</v-btn>
 			<v-text-field label="Regular" single-line v-model="stockId" />
 			<!-- <v-btn @click="response.createLineSeries()">line</v-btn> -->
@@ -27,6 +28,7 @@ import Stock from '../models/Stock'
 import SignalTable from './SignalTable'
 import RadialChart from './charts/RadialChart'
 import BacktestTable from './BacktestTable'
+import DataSeries from '../models/DataSeries'
 export default {
 	components: {
 		Chart,
@@ -43,18 +45,39 @@ export default {
 	}),
 
 	methods: {
-		testmetod() {
-			ipcRenderer.on('test-strategy-response', (event, arg) => {
+		getSignals() {
+			ipcRenderer.on('get-signals', (event, arg) => {
 				console.log('response', arg)
 			})
-			ipcRenderer.send('test-strategy', { id: parseInt(this.stockId) })
+			ipcRenderer.send('get-signals', { id: parseInt(this.stockId) })
 		},
 
 		testAllStocks() {
 			ipcRenderer.on('test-all-stocks', (event, results) => {
+				results.s.forEach(sig => {
+					console.log(sig.stock.name, sig.action)
+				})
+
 				console.log('response', results)
 			})
 			ipcRenderer.send('test-all-stocks')
+		},
+		testPortfolio() {
+			ipcRenderer.on('portfolio-test', (event, res) => {
+				res.forEach((results, index) => {
+					console.log('response', results)
+					this.d.push(
+						new DataSeries({
+							name: 'Portfolio' + index,
+							type: 'line',
+							data: results.filter(({ value }) => value || value === 0 || value === null)
+						})
+					)
+				})
+				this.response = true
+			})
+
+			ipcRenderer.send('portfolio-test')
 		},
 
 		loadStock() {

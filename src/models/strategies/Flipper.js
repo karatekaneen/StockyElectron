@@ -103,6 +103,14 @@ class Flipper extends Strategy {
 			// console.log(newContext)
 		}
 
+		if (currentBar.date === null) {
+			console.log({
+				d: signalBar.date,
+				regime: this.updateRegime(signalBar),
+				x: newContext.regime
+			})
+		}
+
 		return { signal, context: newContext }
 	}
 
@@ -168,12 +176,14 @@ class Flipper extends Strategy {
 			output.set(date, comparator(price, average))
 		}
 
-		const last = [...output.entries()]
-
-		console.log('Latest regime', last[last.length - 1])
+		console.log('Latest regime', [...output.entries()].pop())
 
 		this.regimeFilter = output
 	}
+
+	// TODO Kopiera regim-filter ovanifrån här
+	// * Skapa två MAs med olika lookback (som definieras i rules)
+	// * Merge de två mapsen där värdet är ration mellan dem
 
 	createComparator(operator) {
 		return (price, average) => {
@@ -195,7 +205,8 @@ class Flipper extends Strategy {
 	}
 
 	updateRegime(signalBar) {
-		return this.regimeFilter.get(signalBar.date.toISOString())
+		const date = signalBar.date ? signalBar.date.toISOString() : new Date().toISOString()
+		return this.regimeFilter.get(date)
 	}
 
 	/**
